@@ -22,7 +22,7 @@ class RegisterController extends Controller
 
         event(new Registered($user));  // dispara email de verificação via Resend
 
-        auth()->login($user);
+        auth()->login($user, true);
 
         $request->session()->regenerate();
 

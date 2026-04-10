@@ -114,7 +114,10 @@
     {{-- Aniversariantes --}}
     @if ($birthdays->isNotEmpty() || $upcomingBirthdays->isNotEmpty())
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-5">
-            <h2 class="font-semibold text-gray-900 mb-4">🎂 Aniversariantes</h2>
+            <h2 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <svg class="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-1.5-.75M3 16.5v-1.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 15v1.5"/></svg>
+                Aniversariantes
+            </h2>
 
             @if ($birthdays->isNotEmpty())
                 <p class="text-xs font-semibold text-rose-500 uppercase tracking-wide mb-2">Hoje</p>
@@ -125,7 +128,10 @@
                                 {{ strtoupper(substr($client->name, 0, 1)) }}
                             </div>
                             <span class="text-sm font-medium text-gray-900">{{ $client->name }}</span>
-                            <span class="text-xs text-rose-500 ml-auto">🎉 Hoje!</span>
+                            <span class="text-xs text-rose-500 ml-auto flex items-center gap-1">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+                                Hoje!
+                            </span>
                         </div>
                     @endforeach
                 </div>

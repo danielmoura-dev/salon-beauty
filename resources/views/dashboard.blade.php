@@ -7,7 +7,7 @@
 </head>
 <body class="bg-gray-50 p-8">
     <h1 class="text-2xl font-bold text-gray-800">
-        Olá, {{ auth()->user()->name }}! 👋
+        Olá, {{ auth()->user()->name }}!
     </h1>
     <p class="text-gray-500 mt-1">Bem-vindo ao Gestão Beauty. O dashboard completo vem na próxima etapa.</p>
     <form method="POST" action="{{ route('logout') }}" class="mt-4">

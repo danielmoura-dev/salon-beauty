@@ -96,6 +96,7 @@
                         @foreach ($profAppointments as $apt)
                             @php $cfg = $apt->statusConfig(); @endphp
                             <div
+                                data-apt-id="{{ $apt->id }}"
                                 class="absolute left-1 right-1 rounded-xl border px-2 py-1 cursor-pointer overflow-hidden
                                        {{ $cfg['bg'] }} {{ $cfg['border'] }} hover:brightness-95 transition-all"
                                 style="top: {{ $apt->gridTop($startHour) }}px; height: {{ max($apt->gridHeight() - 4, 28) }}px;"
@@ -119,7 +120,7 @@
             {{-- Estado vazio --}}
             @if ($professionals->isEmpty())
                 <div class="flex-1 flex flex-col items-center justify-center py-24 text-gray-400">
-                    <div class="text-4xl mb-3">💇</div>
+                    <svg class="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.165 2.165 0 011.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.165 2.165 0 001.083-1.838c.005-.352.054-.695.14-1.025m-1.223 2.863l2.077-1.199m0-3.328a4.323 4.323 0 012.068-1.379l5.325-1.628a4.5 4.5 0 012.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.331 4.331 0 0010.607 12m3.736 0l7.794 4.5-.802.215a4.5 4.5 0 01-2.48-.043l-5.326-1.629a4.324 4.324 0 01-2.068-1.379M14.343 12l-2.882 1.664"/></svg>
                     <p class="font-medium">Nenhum profissional na agenda</p>
                     <a href="{{ route('professionals') }}" class="mt-2 text-sm text-rose-600 hover:underline">
                         Cadastrar profissional
@@ -143,7 +144,7 @@
 
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-900" x-text="editingId ? 'Editar Agendamento' : 'Novo Agendamento'"></h2>
-                <button @click="showNew = false" class="text-gray-400 hover:text-gray-600">✕</button>
+                <button @click="showNew = false" class="text-gray-400 hover:text-gray-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
 
             <form @submit.prevent="submitAppointment()" class="space-y-4">
@@ -274,7 +275,7 @@
                         <p class="text-sm text-gray-400"
                            x-text="detail?.date?.substring(0,10) + ' · ' + detail?.start_time + ' – ' + detail?.end_time"></p>
                     </div>
-                    <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600 mt-0.5">✕</button>
+                    <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600 mt-0.5"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 {{-- Status badge --}}
@@ -459,6 +460,7 @@ function agenda() {
 
         async changeStatus(status) {
             this.detail.status = status;
+
             await fetch(`/appointments/${this.detail.id}`, {
                 method: 'PATCH',
                 headers: {
@@ -467,6 +469,23 @@ function agenda() {
                 },
                 body: JSON.stringify({ status }),
             });
+
+            // Atualiza o card na grade sem reload
+            const card = document.querySelector(`[data-apt-id="${this.detail.id}"]`);
+            if (card) {
+                const bgMap     = { scheduled:'bg-blue-100',   confirmed:'bg-green-100',  in_progress:'bg-yellow-100', completed:'bg-gray-100',  cancelled:'bg-red-100',   no_show:'bg-orange-100'  };
+                const borderMap = { scheduled:'border-blue-300', confirmed:'border-green-300', in_progress:'border-yellow-300', completed:'border-gray-300', cancelled:'border-red-300', no_show:'border-orange-300' };
+                const textMap   = { scheduled:'text-blue-700', confirmed:'text-green-700', in_progress:'text-yellow-700', completed:'text-gray-600', cancelled:'text-red-600', no_show:'text-orange-700' };
+
+                Object.values(bgMap).forEach(c => card.classList.remove(c));
+                Object.values(borderMap).forEach(c => card.classList.remove(c));
+                card.classList.add(bgMap[status] ?? 'bg-gray-100', borderMap[status] ?? 'border-gray-300');
+
+                card.querySelectorAll('p').forEach(p => {
+                    Object.values(textMap).forEach(c => p.classList.remove(c));
+                    if (textMap[status]) p.classList.add(textMap[status]);
+                });
+            }
         },
 
         async deleteAppointment() {

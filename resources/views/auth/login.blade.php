@@ -20,11 +20,10 @@
             class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500">
     </div>
 
-    <div class="flex items-center justify-between">
-        <label class="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" name="remember" class="rounded border-gray-300 text-rose-500">
-            Lembrar de mim
-        </label>
+    <div class="flex items-center justify-end">
+        <a href="{{ route('password.request') }}" class="text-sm text-rose-600 hover:underline">
+            Esqueceu a senha?
+        </a>
     </div>
 
     <button type="submit"

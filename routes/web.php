@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoryController;
@@ -30,6 +32,11 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
     Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+
+    Route::get('/password/forgot', [ForgotPasswordController::class, 'showForm'])->name('password.request');
+    Route::post('/password/forgot', [ForgotPasswordController::class, 'sendLink'])->name('password.email');
+    Route::get('/password/reset/{token}', [ResetPasswordController::class, 'showForm'])->name('password.reset');
+    Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
 });
 
 // Webhooks — sem CSRF, sem auth

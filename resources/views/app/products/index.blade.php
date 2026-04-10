@@ -28,7 +28,9 @@
                     <img src="{{ Storage::url($product->photo) }}"
                          class="h-32 w-full object-cover" alt="">
                 @else
-                    <div class="h-20 w-full bg-gray-50 flex items-center justify-center text-3xl">📦</div>
+                    <div class="h-20 w-full bg-gray-50 flex items-center justify-center">
+                        <svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+                    </div>
                 @endif
                 <div class="p-4">
                     <div class="flex items-start justify-between gap-2">
@@ -71,7 +73,7 @@
             </div>
         @empty
             <div class="col-span-full text-center py-16 text-gray-400">
-                <div class="text-4xl mb-3">📦</div>
+                <svg class="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
                 <p class="font-medium">Nenhum produto cadastrado</p>
             </div>
         @endforelse
