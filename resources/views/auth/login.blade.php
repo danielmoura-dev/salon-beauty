@@ -3,7 +3,7 @@
 @section('heading', 'Acesse sua conta')
 
 @section('content')
-<form method="POST" action="{{ route('login') }}" class="space-y-4">
+<form method="POST" action="{{ route('login') }}" class="space-y-4" x-data="{ loading: false }" @submit="loading = true">
     @csrf
 
     <div>
@@ -33,9 +33,13 @@
         </a>
     </div>
 
-    <button type="submit"
-        class="w-full rounded-xl bg-rose-600 py-3 text-white font-semibold hover:bg-rose-700 transition-colors">
-        Entrar
+    <button type="submit" :disabled="loading"
+        class="w-full rounded-xl bg-rose-600 py-3 text-white font-semibold hover:bg-rose-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+        <svg x-show="loading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <span x-text="loading ? 'Entrando…' : 'Entrar'"></span>
     </button>
 
     <div class="relative my-2">
