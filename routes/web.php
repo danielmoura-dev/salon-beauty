@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\Auth\RegisterController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DashboardController;
 
 // --- Rotas públicas ---
 Route::middleware('guest')->group(function () {
@@ -39,8 +40,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // --- App principal (autenticado + verificado + assinatura ativa) ---
 Route::middleware(['auth', 'verified', 'subscription.active'])->group(function () {
-    Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
-    // demais rotas serão adicionadas nos próximos módulos
+    Route::get('/dashboard',      [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/agenda',         fn() => view('app.placeholder', ['title' => 'Agenda']))->name('agenda');
+    Route::get('/orders',         fn() => view('app.placeholder', ['title' => 'Comandas']))->name('orders');
+    Route::get('/clients',        fn() => view('app.placeholder', ['title' => 'Clientes']))->name('clients');
+    Route::get('/professionals',  fn() => view('app.placeholder', ['title' => 'Profissionais']))->name('professionals');
+    Route::get('/services',       fn() => view('app.placeholder', ['title' => 'Serviços']))->name('services');
+    Route::get('/products',       fn() => view('app.placeholder', ['title' => 'Produtos']))->name('products');
+    Route::get('/expenses',       fn() => view('app.placeholder', ['title' => 'Despesas']))->name('expenses');
+    Route::get('/reports',        fn() => view('app.placeholder', ['title' => 'Relatórios']))->name('reports');
+    Route::get('/settings',       fn() => view('app.placeholder', ['title' => 'Configurações']))->name('settings');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
