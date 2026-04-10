@@ -82,7 +82,8 @@
     {{-- Modal Produto --}}
     <x-modal name="product" title="Produto">
         <form :action="editing ? `/products/${editing.id}` : '{{ route('products.store') }}'"
-              method="POST" enctype="multipart/form-data" class="space-y-4">
+              method="POST" enctype="multipart/form-data" class="space-y-4"
+              x-data="{ submitting: false }" @submit="submitting = true">
             @csrf
             <template x-if="editing"><input type="hidden" name="_method" value="PUT"></template>
 
@@ -140,9 +141,10 @@
                     class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                     Cancelar
                 </button>
-                <button type="submit"
-                    class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
-                    Salvar
+                <button type="submit" :disabled="submitting"
+                    class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                    <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
                 </button>
             </div>
         </form>
