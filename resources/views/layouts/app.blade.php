@@ -6,13 +6,21 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Gestão Beauty')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        /* Sidebar visível imediatamente no desktop — antes do Alpine carregar */
+        @media (min-width: 1024px) {
+            #main-sidebar { display: flex !important; }
+        }
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
 <body class="h-full"
       x-data="{ sidebarOpen: false, isDesktop: window.innerWidth >= 1024 }"
       @resize.window="isDesktop = window.innerWidth >= 1024; if (isDesktop) sidebarOpen = false"
       @keydown.escape="sidebarOpen = false">
 
-    {{-- ========== OVERLAY (mobile) ========== --}}
+    {{-- Overlay mobile --}}
     <div
         x-show="sidebarOpen"
         x-transition:enter="transition-opacity ease-out duration-300"
@@ -29,8 +37,9 @@
     {{-- ========== WRAPPER FLEX ========== --}}
     <div class="flex h-screen overflow-hidden">
 
-    {{-- ========== SIDEBAR DRAWER (mobile) + SIDEBAR FIXA (desktop) ========== --}}
+    {{-- ========== SIDEBAR ========== --}}
     <aside
+        id="main-sidebar"
         x-show="isDesktop || sidebarOpen"
         x-transition:enter="transition-transform ease-out duration-300"
         x-transition:enter-start="-translate-x-full"
@@ -41,7 +50,6 @@
         :class="isDesktop ? 'relative z-auto shadow-none flex-shrink-0' : 'fixed inset-y-0 left-0 z-30 shadow-sm'"
         class="w-64 flex flex-col bg-white border-r border-gray-100"
         style="display:none"
-        x-cloak
     >
         @include('components.sidebar')
     </aside>
@@ -49,13 +57,10 @@
     {{-- ========== ÁREA PRINCIPAL ========== --}}
     <div class="flex flex-col flex-1 min-w-0 overflow-auto">
 
-        {{-- Topbar mobile --}}
         @include('components.topbar')
 
-        {{-- Conteúdo da página --}}
         <main class="flex-1 p-4 sm:p-6 lg:p-8">
 
-            {{-- Flash messages --}}
             @if (session('success'))
                 <div class="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center gap-2">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
@@ -71,11 +76,9 @@
 
             @yield('content')
         </main>
-    </div>{{-- fim área principal --}}
+    </div>
 
-    </div>{{-- fim wrapper flex --}}
+    </div>
 
-    {{-- Alpine.js --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
