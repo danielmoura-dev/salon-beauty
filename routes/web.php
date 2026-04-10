@@ -12,6 +12,7 @@ use App\Http\Controllers\ProfessionalController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\OrderController;
 
 // --- Rotas públicas ---
 Route::middleware('guest')->group(function () {
@@ -51,7 +52,15 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
     Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
-    Route::get('/orders', fn() => view('app.placeholder', ['title' => 'Comandas']))->name('orders');
+
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/items', [OrderController::class, 'addItem'])->name('orders.items.add');
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'removeItem'])->name('orders.items.remove');
+    Route::post('/orders/{order}/payments', [OrderController::class, 'addPayment'])->name('orders.payments.add');
+    Route::post('/orders/{order}/close', [OrderController::class, 'close'])->name('orders.close');
+    Route::post('/orders/{order}/reopen', [OrderController::class, 'reopen'])->name('orders.reopen');
 
     // Clientes
     Route::get('/clients', [ClientController::class, 'index'])->name('clients');

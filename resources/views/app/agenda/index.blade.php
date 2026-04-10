@@ -309,6 +309,12 @@
 
                 {{-- Ações --}}
                 <div class="flex gap-2 pt-1">
+                    <a x-show="detail?.order_id"
+                       :href="'/orders/' + detail?.order_id"
+                       class="flex-1 rounded-xl bg-rose-50 border border-rose-200 py-2.5 text-sm font-semibold
+                              text-rose-700 text-center hover:bg-rose-100">
+                        Ver Comanda
+                    </a>
                     <button @click="openEditAppointment()"
                         class="flex-1 rounded-xl bg-rose-50 border border-rose-200 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-100">
                         Editar
@@ -424,6 +430,7 @@ function agenda() {
                     method,
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
                             || '{{ csrf_token() }}',
                     },

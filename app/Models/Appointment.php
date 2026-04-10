@@ -11,7 +11,7 @@ class Appointment extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'client_id', 'professional_id', 'order_id',
+        'tenant_id', 'client_id', 'professional_id', 'service_id', 'order_id',
         'date', 'start_time', 'end_time',
         'status', 'recurrence', 'recurrence_group_id',
         'create_order', 'notes',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Client;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Professional;
 use App\Models\Service;
 use Carbon\Carbon;
@@ -79,11 +80,28 @@ class AppointmentController extends Controller
 
             // Cria comanda automaticamente se solicitado
             if ($appointment->create_order) {
+                $service = Service::find($data['service_id']);
+
                 $order = Order::create([
                     'client_id'      => $data['client_id'],
                     'appointment_id' => $appointment->id,
                     'status'         => 'open',
+                    'total'          => $service?->price ?? 0,
                 ]);
+
+                if ($service) {
+                    OrderItem::create([
+                        'order_id'        => $order->id,
+                        'professional_id' => $data['professional_id'],
+                        'type'            => 'service',
+                        'description'     => $service->name,
+                        'qty'             => 1,
+                        'unit_price'      => $service->price,
+                        'commission_pct'  => $service->commission_pct ?? 0,
+                        'has_commission'  => ($service->commission_pct ?? 0) > 0,
+                    ]);
+                }
+
                 $appointment->update(['order_id' => $order->id]);
             }
         }
@@ -94,10 +112,15 @@ class AppointmentController extends Controller
     public function update(Request $request, Appointment $appointment)
     {
         $data = $request->validate([
-            'status'     => ['sometimes', 'in:scheduled,confirmed,in_progress,completed,cancelled,no_show'],
-            'notes'      => ['nullable', 'string', 'max:500'],
-            'start_time' => ['sometimes', 'date_format:H:i'],
-            'end_time'   => ['sometimes', 'date_format:H:i'],
+            'client_id'       => ['sometimes', 'uuid', 'exists:clients,id'],
+            'professional_id' => ['sometimes', 'uuid', 'exists:professionals,id'],
+            'service_id'      => ['sometimes', 'uuid', 'exists:services,id'],
+            'date'            => ['sometimes', 'date'],
+            'start_time'      => ['sometimes', 'date_format:H:i'],
+            'end_time'        => ['sometimes', 'date_format:H:i'],
+            'status'          => ['sometimes', 'in:scheduled,confirmed,in_progress,completed,cancelled,no_show'],
+            'recurrence'      => ['sometimes', 'in:none,weekly,biweekly,monthly'],
+            'notes'           => ['nullable', 'string', 'max:500'],
         ]);
 
         $appointment->update($data);
