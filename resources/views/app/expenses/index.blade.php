@@ -101,10 +101,11 @@
                         class="rounded-lg px-2.5 py-1.5 bg-rose-50 text-rose-600 text-xs font-semibold hover:bg-rose-100 transition-colors">
                         Editar
                     </button>
-                    <form method="POST" action="{{ route('expenses.destroy', $expense) }}"
-                          onsubmit="return confirm('Remover despesa?')">
+                    <form id="del-expense-{{ $expense->id }}"
+                          method="POST" action="{{ route('expenses.destroy', $expense) }}">
                         @csrf @method('DELETE')
-                        <button type="submit"
+                        <button type="button"
+                            @click="$dispatch('open-confirm', { formId: 'del-expense-{{ $expense->id }}', message: 'Remover esta despesa? Esta ação não pode ser desfeita.' })"
                             class="rounded-lg px-2.5 py-1.5 bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors">
                             Excluir
                         </button>

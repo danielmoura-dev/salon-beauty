@@ -320,7 +320,7 @@
                         class="flex-1 rounded-xl bg-rose-50 border border-rose-200 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-100">
                         Editar
                     </button>
-                    <button @click="deleteAppointment()"
+                    <button @click="confirmDelete = true"
                         class="flex-1 rounded-xl border border-red-200 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
                         Excluir
                     </button>
@@ -333,6 +333,32 @@
                                class="rounded border-gray-300 text-rose-500">
                         Excluir todos os agendamentos desta série
                     </label>
+                </div>
+            </div>
+
+            {{-- Confirmação de exclusão --}}
+            <div x-show="confirmDelete" class="absolute inset-0 rounded-2xl bg-white flex flex-col items-center justify-center p-6 space-y-4" style="display:none">
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                </div>
+                <div class="text-center">
+                    <h3 class="font-semibold text-gray-900">Confirmar exclusão</h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Excluir o agendamento de <span class="font-medium" x-text="detail?.client?.name"></span>?
+                        <span x-show="deleteAll" class="block mt-1 text-rose-600 font-medium">Todos da série serão removidos.</span>
+                    </p>
+                </div>
+                <div class="flex gap-3 w-full">
+                    <button @click="confirmDelete = false"
+                        class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button @click="deleteAppointment()"
+                        class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
+                        Excluir
+                    </button>
                 </div>
             </div>
         </div>
@@ -350,6 +376,7 @@ function agenda() {
         saving: false,
         formError: '',
         deleteAll: false,
+        confirmDelete: false,
         detail: null,
         editingId: null,
 
@@ -455,6 +482,7 @@ function agenda() {
         openDetail(appointment) {
             this.detail = appointment;
             this.deleteAll = false;
+            this.confirmDelete = false;
             this.showDetail = true;
         },
 
@@ -489,7 +517,7 @@ function agenda() {
         },
 
         async deleteAppointment() {
-            if (!confirm('Confirma exclusão?')) return;
+            this.confirmDelete = false;
             await fetch(`/appointments/${this.detail.id}`, {
                 method: 'DELETE',
                 headers: {

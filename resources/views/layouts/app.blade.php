@@ -80,5 +80,57 @@
 
     </div>
 
+    {{-- ========== MODAL DE CONFIRMAÇÃO GLOBAL ========== --}}
+    <div x-data="{
+            show: false,
+            message: '',
+            formId: null,
+            open(detail) { this.message = detail.message; this.formId = detail.formId; this.show = true; },
+            confirm() { document.getElementById(this.formId)?.submit(); this.show = false; }
+         }"
+         @open-confirm.window="open($event.detail)"
+         x-show="show"
+         x-cloak
+         class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+         style="display:none">
+        <div class="absolute inset-0 bg-black/40" @click="show = false"
+             x-transition:enter="transition-opacity ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"></div>
+        <div class="relative w-full max-w-sm rounded-2xl bg-white shadow-xl p-6 space-y-4"
+             @click.stop
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            <div class="flex items-start gap-4">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                    <svg class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">Confirmar exclusão</h3>
+                    <p class="mt-1 text-sm text-gray-500" x-text="message"></p>
+                </div>
+            </div>
+            <div class="flex gap-3 pt-1">
+                <button @click="show = false"
+                    class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button @click="confirm()"
+                    class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
+                    Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
