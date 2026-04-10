@@ -13,6 +13,9 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ReportController;
+
 
 // --- Rotas públicas ---
 Route::middleware('guest')->group(function () {
@@ -93,6 +96,16 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::get('/expenses', fn() => view('app.placeholder', ['title' => 'Despesas']))->name('expenses');
     Route::get('/reports', fn() => view('app.placeholder', ['title' => 'Relatórios']))->name('reports');
     Route::get('/settings', fn() => view('app.placeholder', ['title' => 'Configurações']))->name('settings');
+
+    // Despesas
+    Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses');
+    Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    Route::post('/expenses/{expense}/toggle', [ExpenseController::class, 'togglePaid'])->name('expenses.toggle');
+
+    // Relatórios
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
