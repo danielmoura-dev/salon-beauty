@@ -11,6 +11,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ProfessionalController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\AppointmentController;
 
 // --- Rotas públicas ---
 Route::middleware('guest')->group(function () {
@@ -46,9 +47,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // --- App principal (autenticado + verificado + assinatura ativa) ---
 Route::middleware(['auth', 'verified', 'subscription.active'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/agenda', fn() => view('app.placeholder', ['title' => 'Agenda']))->name('agenda');
+    Route::get('/agenda', [AppointmentController::class, 'index'])->name('agenda');
+    Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+    Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
+    Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
     Route::get('/orders', fn() => view('app.placeholder', ['title' => 'Comandas']))->name('orders');
-    
+
     // Clientes
     Route::get('/clients', [ClientController::class, 'index'])->name('clients');
     Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
@@ -76,7 +80,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     // Categorias (API interna)
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-    
+
     Route::get('/expenses', fn() => view('app.placeholder', ['title' => 'Despesas']))->name('expenses');
     Route::get('/reports', fn() => view('app.placeholder', ['title' => 'Relatórios']))->name('reports');
     Route::get('/settings', fn() => view('app.placeholder', ['title' => 'Configurações']))->name('settings');
