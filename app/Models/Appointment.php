@@ -60,10 +60,9 @@ class Appointment extends Model
     }
 
     // Posição em pixels na grade (cada 30min = 64px)
-    public function gridTop(): int
+    public function gridTop(int $startHour = 8): int
     {
         [$h, $m] = explode(':', $this->start_time);
-        $startHour = config('beauty.agenda_start_hour', 8);
         $minutesFromStart = (((int)$h - $startHour) * 60) + (int)$m;
         return ($minutesFromStart / 30) * 64;
     }

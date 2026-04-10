@@ -68,7 +68,7 @@
                 <div class="w-48 sm:w-56 shrink-0 border-r border-gray-100 last:border-r-0">
 
                     {{-- Cabeçalho do profissional --}}
-                    <div class="h-10 border-b border-gray-100 flex items-center justify-center gap-2 px-2 sticky top-[57px] bg-white z-[5]">
+                    <div class="h-10 border-b border-gray-100 flex items-center justify-center gap-2 px-2 sticky top-0 bg-white z-[5]">
                         @if ($professional->photo)
                             <img src="{{ Storage::url($professional->photo) }}"
                                  class="h-6 w-6 rounded-full object-cover shrink-0" alt="">
@@ -98,7 +98,7 @@
                             <div
                                 class="absolute left-1 right-1 rounded-xl border px-2 py-1 cursor-pointer overflow-hidden
                                        {{ $cfg['bg'] }} {{ $cfg['border'] }} hover:brightness-95 transition-all"
-                                style="top: {{ $apt->gridTop() }}px; height: {{ max($apt->gridHeight() - 4, 28) }}px;"
+                                style="top: {{ $apt->gridTop($startHour) }}px; height: {{ max($apt->gridHeight() - 4, 28) }}px;"
                                 @click.stop="openDetail({{ $apt->load('client')->toJson() }})"
                             >
                                 <p class="text-xs font-semibold {{ $cfg['text'] }} truncate leading-tight">

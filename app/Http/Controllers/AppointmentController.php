@@ -37,8 +37,9 @@ class AppointmentController extends Controller
         $clients  = Client::orderBy('name')->get(['id', 'name', 'phone']);
         $services = Service::where('active', true)->orderBy('name')->get(['id', 'name', 'price', 'duration_min']);
 
-        $startHour = config('beauty.agenda_start_hour', 8);
-        $endHour   = config('beauty.agenda_end_hour', 22);
+        $tenant    = auth()->user()->tenant;
+        $startHour = $tenant->agenda_start_hour ?? 8;
+        $endHour   = $tenant->agenda_end_hour   ?? 22;
 
         // Gera slots de 30 em 30 minutos
         $slots = [];

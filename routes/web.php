@@ -15,6 +15,9 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\WebhookController;
 
 
 // --- Rotas públicas ---
@@ -28,6 +31,10 @@ Route::middleware('guest')->group(function () {
     Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
     Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
 });
+
+// Webhooks — sem CSRF, sem auth
+Route::post('/webhooks/stripe', [WebhookController::class, 'stripe'])->name('webhooks.stripe');
+Route::post('/webhooks/mercadopago', [WebhookController::class, 'mercadoPago'])->name('webhooks.mercadopago');
 
 // --- Verificação de email (Laravel built-in) ---
 Route::middleware('auth')->group(function () {
@@ -65,6 +72,19 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::post('/orders/{order}/close', [OrderController::class, 'close'])->name('orders.close');
     Route::post('/orders/{order}/reopen', [OrderController::class, 'reopen'])->name('orders.reopen');
 
+    // Configurações
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.profile');
+    Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
+    Route::post('/settings/advanced', [SettingsController::class, 'updateAdvanced'])->name('settings.advanced');
+
+    // Assinatura
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription/stripe', [SubscriptionController::class, 'checkoutStripe'])->name('subscription.stripe');
+    Route::post('/subscription/mercadopago', [SubscriptionController::class, 'checkoutMercadoPago'])->name('subscription.mercadopago');
+    Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancelStripe'])->name('subscription.cancel');
+
     // Clientes
     Route::get('/clients', [ClientController::class, 'index'])->name('clients');
     Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
@@ -92,10 +112,6 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     // Categorias (API interna)
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-
-    Route::get('/expenses', fn() => view('app.placeholder', ['title' => 'Despesas']))->name('expenses');
-    Route::get('/reports', fn() => view('app.placeholder', ['title' => 'Relatórios']))->name('reports');
-    Route::get('/settings', fn() => view('app.placeholder', ['title' => 'Configurações']))->name('settings');
 
     // Despesas
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses');
