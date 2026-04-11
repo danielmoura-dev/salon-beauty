@@ -2,10 +2,10 @@
 @section('title', 'Agenda — Gestão Beauty')
 
 @section('content')
-<div x-data="agenda()" class="flex flex-col h-full -m-4 sm:-m-6 lg:-m-8">
+<div x-data="agenda()" class="-m-4 sm:-m-6 lg:-m-8">
 
     {{-- ===== HEADER DA AGENDA ===== --}}
-    <div class="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+    <div class="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
 
         {{-- Navegação de datas --}}
         <a href="{{ route('agenda', ['date' => $date->copy()->subDay()->toDateString()]) }}"
@@ -44,12 +44,37 @@
     </div>
 
     {{-- ===== GRADE ===== --}}
-    <div class="flex-1 overflow-auto">
-        <div class="flex min-w-max">
+
+    {{-- Cabeçalho dos profissionais: sticky vertical, overflow oculto (sincronizado via JS) --}}
+    <div class="sticky top-0 z-20 bg-white border-b border-gray-100 overflow-hidden" id="agenda-header">
+        <div class="flex min-w-max" id="agenda-header-inner">
+            <div class="w-16 shrink-0 border-r border-gray-100 h-10"></div>
+            @foreach ($professionals as $professional)
+                <div class="w-48 sm:w-56 shrink-0 h-10 border-r border-gray-100 last:border-r-0
+                            flex items-center justify-center gap-2 px-2">
+                    @if ($professional->photo)
+                        <img src="{{ Storage::url($professional->photo) }}"
+                             class="h-6 w-6 rounded-full object-cover shrink-0" alt="">
+                    @else
+                        <div class="h-6 w-6 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 text-xs font-bold shrink-0">
+                            {{ strtoupper(substr($professional->name, 0, 1)) }}
+                        </div>
+                    @endif
+                    <span class="text-xs font-semibold text-gray-700 truncate">{{ $professional->name }}</span>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    {{-- Corpo com scroll horizontal --}}
+    <div class="overflow-x-auto" id="agenda-body">
+        <div class="min-w-max relative">
+
+            {{-- Corpo da grade --}}
+            <div class="flex">
 
             {{-- Coluna de horas --}}
             <div class="sticky left-0 z-10 bg-white border-r border-gray-100 w-16 shrink-0">
-                <div class="h-10 border-b border-gray-100"></div> {{-- cabeçalho vazio --}}
                 @foreach ($slots as $slot)
                     <div class="h-16 flex items-start justify-end pr-2 pt-1">
                         @if (str_ends_with($slot, ':00'))
@@ -66,19 +91,6 @@
                 @endphp
 
                 <div class="w-48 sm:w-56 shrink-0 border-r border-gray-100 last:border-r-0">
-
-                    {{-- Cabeçalho do profissional --}}
-                    <div class="h-10 border-b border-gray-100 flex items-center justify-center gap-2 px-2 sticky top-0 bg-white z-[5]">
-                        @if ($professional->photo)
-                            <img src="{{ Storage::url($professional->photo) }}"
-                                 class="h-6 w-6 rounded-full object-cover shrink-0" alt="">
-                        @else
-                            <div class="h-6 w-6 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 text-xs font-bold shrink-0">
-                                {{ strtoupper(substr($professional->name, 0, 1)) }}
-                            </div>
-                        @endif
-                        <span class="text-xs font-semibold text-gray-700 truncate">{{ $professional->name }}</span>
-                    </div>
 
                     {{-- Slots + Cards --}}
                     <div class="relative">
@@ -117,6 +129,8 @@
                 </div>
             @endforeach
 
+            </div>{{-- fim corpo --}}
+
             {{-- Estado vazio --}}
             @if ($professionals->isEmpty())
                 <div class="flex-1 flex flex-col items-center justify-center py-24 text-gray-400">
@@ -129,7 +143,7 @@
             @endif
 
         </div>
-    </div>
+    </div>{{-- fim agenda-body --}}
 
     {{-- ===== MODAL: NOVO AGENDAMENTO ===== --}}
     <div x-show="showNew" x-cloak
@@ -567,5 +581,18 @@ function agenda() {
         },
     }
 }
+</script>
+
+<script>
+// Sincroniza scroll horizontal do cabeçalho com o corpo da grade
+document.addEventListener('DOMContentLoaded', () => {
+    const body   = document.getElementById('agenda-body');
+    const header = document.getElementById('agenda-header-inner');
+    if (body && header) {
+        body.addEventListener('scroll', () => {
+            header.style.transform = `translateX(-${body.scrollLeft}px)`;
+        });
+    }
+});
 </script>
 @endsection
