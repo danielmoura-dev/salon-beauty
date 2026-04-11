@@ -12,7 +12,7 @@
     <p class="text-gray-500 mt-1">Bem-vindo ao Gestão Beauty. O dashboard completo vem na próxima etapa.</p>
     <form method="POST" action="{{ route('logout') }}" class="mt-4">
         @csrf
-        <button class="text-sm text-rose-600 hover:underline">Sair</button>
+        <button class="text-sm text-primary-600 hover:underline">Sair</button>
     </form>
 </body>
 </html>

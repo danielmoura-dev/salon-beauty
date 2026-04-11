@@ -20,7 +20,7 @@
                 {{ $date->translatedFormat('l, d \d\e F') }}
             </h2>
             @if ($date->isToday())
-                <span class="text-xs text-rose-500 font-medium">Hoje</span>
+                <span class="text-xs text-primary-500 font-medium">Hoje</span>
             @endif
         </div>
 
@@ -34,7 +34,7 @@
         {{-- Datepicker --}}
         <input type="date" value="{{ $date->toDateString() }}"
                onchange="window.location='{{ route('agenda') }}?date='+this.value"
-               class="rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500 w-36">
+               class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 w-36">
 
         {{-- Botão hoje --}}
         <a href="{{ route('agenda') }}"
@@ -56,7 +56,7 @@
                         <img src="{{ Storage::url($professional->photo) }}"
                              class="h-6 w-6 rounded-full object-cover shrink-0" alt="">
                     @else
-                        <div class="h-6 w-6 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 text-xs font-bold shrink-0">
+                        <div class="h-6 w-6 rounded-full bg-primary-100 flex items-center justify-center text-primary-500 text-xs font-bold shrink-0">
                             {{ strtoupper(substr($professional->name, 0, 1)) }}
                         </div>
                     @endif
@@ -98,7 +98,7 @@
                         {{-- Linhas de slot (fundo clicável) --}}
                         @foreach ($slots as $slot)
                             <div
-                                class="h-16 border-b border-gray-50 cursor-pointer hover:bg-rose-50/40 transition-colors
+                                class="h-16 border-b border-gray-50 cursor-pointer hover:bg-primary-50/40 transition-colors
                                        {{ str_ends_with($slot, ':30') ? 'border-dashed' : '' }}"
                                 @click="openNewAppointment('{{ $professional->id }}', '{{ $date->toDateString() }}', '{{ $slot }}')"
                             ></div>
@@ -136,7 +136,7 @@
                 <div class="flex-1 flex flex-col items-center justify-center py-24 text-gray-400">
                     <svg class="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.165 2.165 0 011.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.165 2.165 0 001.083-1.838c.005-.352.054-.695.14-1.025m-1.223 2.863l2.077-1.199m0-3.328a4.323 4.323 0 012.068-1.379l5.325-1.628a4.5 4.5 0 012.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.331 4.331 0 0010.607 12m3.736 0l7.794 4.5-.802.215a4.5 4.5 0 01-2.48-.043l-5.326-1.629a4.324 4.324 0 01-2.068-1.379M14.343 12l-2.882 1.664"/></svg>
                     <p class="font-medium">Nenhum profissional na agenda</p>
-                    <a href="{{ route('professionals') }}" class="mt-2 text-sm text-rose-600 hover:underline">
+                    <a href="{{ route('professionals') }}" class="mt-2 text-sm text-primary-600 hover:underline">
                         Cadastrar profissional
                     </a>
                 </div>
@@ -167,7 +167,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
                     <select x-model="form.client_id" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Selecione o cliente…</option>
                         @foreach ($clients as $client)
                             <option value="{{ $client->id }}">{{ $client->name }} {{ $client->phone ? '· '.$client->phone : '' }}</option>
@@ -179,7 +179,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Serviço *</label>
                     <select x-model="form.service_id" @change="applyServiceDuration()" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Selecione o serviço…</option>
                         @foreach ($services as $service)
                             <option value="{{ $service->id }}"
@@ -194,7 +194,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
                     <select x-model="form.professional_id" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         @foreach ($professionals as $prof)
                             <option value="{{ $prof->id }}">{{ $prof->name }}</option>
                         @endforeach
@@ -206,18 +206,18 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
                         <input type="date" x-model="form.date" required
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Início</label>
                         <input type="time" x-model="form.start_time" step="900"
                                @change="recalcEndTime()"
-                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fim</label>
                         <input type="time" x-model="form.end_time" step="900"
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                 </div>
 
@@ -225,7 +225,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Recorrência</label>
                     <select x-model="form.recurrence"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="none">Não repetir</option>
                         <option value="weekly">Semanal (12x)</option>
                         <option value="biweekly">Quinzenal (12x)</option>
@@ -240,14 +240,14 @@
                         <p class="text-xs text-gray-400">Abre automaticamente ao confirmar</p>
                     </div>
                     <input type="checkbox" x-model="form.create_order"
-                           class="rounded border-gray-300 text-rose-500 focus:ring-rose-500">
+                           class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
                 </label>
 
                 {{-- Observações --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                     <textarea x-model="form.notes" rows="2"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500"></textarea>
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
                 </div>
 
                 {{-- Erro --}}
@@ -259,7 +259,7 @@
                         Cancelar
                     </button>
                     <button type="submit" :disabled="saving"
-                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60">
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
                         <span x-show="!saving">Agendar</span>
                         <span x-show="saving">Salvando…</span>
                     </button>
@@ -326,12 +326,12 @@
                 <div class="flex gap-2 pt-1">
                     <a x-show="detail?.order_id"
                        :href="'/orders/' + detail?.order_id"
-                       class="flex-1 rounded-xl bg-rose-50 border border-rose-200 py-2.5 text-sm font-semibold
-                              text-rose-700 text-center hover:bg-rose-100">
+                       class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold
+                              text-primary-700 text-center hover:bg-primary-100">
                         Ver Comanda
                     </a>
                     <button @click="openEditAppointment()"
-                        class="flex-1 rounded-xl bg-rose-50 border border-rose-200 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-100">
+                        class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold text-primary-600 hover:bg-primary-100">
                         Editar
                     </button>
                     <button @click="confirmDelete = true"
@@ -344,7 +344,7 @@
                 <div x-show="detail?.recurrence !== 'none'" class="pt-0">
                     <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
                         <input type="checkbox" x-model="deleteAll"
-                               class="rounded border-gray-300 text-rose-500">
+                               class="rounded border-gray-300 text-primary-500">
                         Excluir todos os agendamentos desta série
                     </label>
                 </div>
@@ -361,7 +361,7 @@
                     <h3 class="font-semibold text-gray-900">Confirmar exclusão</h3>
                     <p class="mt-1 text-sm text-gray-500">
                         Excluir o agendamento de <span class="font-medium" x-text="detail?.client?.name"></span>?
-                        <span x-show="deleteAll" class="block mt-1 text-rose-600 font-medium">Todos da série serão removidos.</span>
+                        <span x-show="deleteAll" class="block mt-1 text-primary-600 font-medium">Todos da série serão removidos.</span>
                     </p>
                 </div>
                 <div class="flex gap-3 w-full">

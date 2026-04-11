@@ -7,6 +7,11 @@ use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/', fn() => auth()->check()
+    ? redirect()->route('dashboard')
+    : redirect()->route('login')
+);
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;

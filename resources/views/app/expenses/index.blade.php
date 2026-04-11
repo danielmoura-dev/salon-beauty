@@ -16,7 +16,7 @@
                 + Categoria
             </button>
             <button @click="openCreate()"
-                class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+                class="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
                 + Nova Despesa
             </button>
         </div>
@@ -98,7 +98,7 @@
                 {{-- Ações --}}
                 <div class="flex gap-1 shrink-0">
                     <button @click="openEdit({{ $expense->toJson() }})"
-                        class="rounded-lg px-2.5 py-1.5 bg-rose-50 text-rose-600 text-xs font-semibold hover:bg-rose-100 transition-colors">
+                        class="rounded-lg px-2.5 py-1.5 bg-primary-50 text-primary-600 text-xs font-semibold hover:bg-primary-100 transition-colors">
                         Editar
                     </button>
                     <form id="del-expense-{{ $expense->id }}"
@@ -145,28 +145,28 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
                     <input type="text" name="description" :value="editing?.description" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
                         <input type="number" name="amount" :value="editing?.amount" step="0.01" min="0.01" required
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Vencimento *</label>
                         <input type="date" name="due_date"
                                :value="editing?.due_date?.substring(0,10)"
                                required
-                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                     <select name="category_id"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Sem categoria</option>
                         @foreach ($categories as $cat)
                             <option value="{{ $cat->id }}" :selected="editing?.category_id === '{{ $cat->id }}'">
@@ -179,7 +179,7 @@
                 <div x-show="!editing">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
                     <select name="payment_type" x-model="paymentType"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="one_time">À vista</option>
                         <option value="installment">Parcelado</option>
                         <option value="recurring">Recorrente</option>
@@ -189,20 +189,20 @@
                 <div x-show="paymentType === 'installment' && !editing">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Número de parcelas</label>
                     <input type="number" name="installments" min="2" max="60" value="2"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
 
                 <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
                     <span class="text-sm font-medium text-gray-700">Já foi paga</span>
                     <input type="checkbox" name="is_paid" value="1"
                            :checked="editing?.is_paid"
-                           class="rounded border-gray-300 text-rose-500 focus:ring-rose-500">
+                           class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
                 </label>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                     <textarea name="notes" rows="2"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
                         x-text="editing?.notes"></textarea>
                 </div>
 
@@ -212,7 +212,7 @@
                         Cancelar
                     </button>
                     <button type="submit" :disabled="submitting"
-                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
                         <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
                     </button>
@@ -234,7 +234,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
                     <input type="text" name="name" required autofocus
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
                 <div class="flex gap-2">
                     <button type="button" @click="showCategory = false"
@@ -242,7 +242,7 @@
                         Cancelar
                     </button>
                     <button type="submit"
-                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
                         Criar
                     </button>
                 </div>

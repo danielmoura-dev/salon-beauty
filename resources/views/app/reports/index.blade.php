@@ -13,7 +13,7 @@
         <form method="GET" class="sm:ml-auto flex items-center gap-2">
             <input type="month" name="month" value="{{ $month->format('Y-m') }}"
                    onchange="this.form.submit()"
-                   class="rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                   class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
         </form>
     </div>
 
@@ -25,7 +25,7 @@
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Serviços</span>
-                    <span class="font-medium text-rose-600">R$ {{ number_format($revenueServices, 2, ',', '.') }}</span>
+                    <span class="font-medium text-primary-600">R$ {{ number_format($revenueServices, 2, ',', '.') }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Produtos</span>
@@ -80,7 +80,7 @@
                             <span class="font-semibold">R$ {{ number_format($total, 2, ',', '.') }}</span>
                         </div>
                         <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div class="h-full bg-rose-400 rounded-full transition-all"
+                            <div class="h-full bg-primary-400 rounded-full transition-all"
                                  style="width: {{ $pct }}%"></div>
                         </div>
                     </div>
@@ -120,15 +120,15 @@
             </h2>
 
             @if ($birthdays->isNotEmpty())
-                <p class="text-xs font-semibold text-rose-500 uppercase tracking-wide mb-2">Hoje</p>
+                <p class="text-xs font-semibold text-primary-500 uppercase tracking-wide mb-2">Hoje</p>
                 <div class="space-y-2 mb-4">
                     @foreach ($birthdays as $client)
                         <div class="flex items-center gap-3">
-                            <div class="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 font-bold text-sm shrink-0">
+                            <div class="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-500 font-bold text-sm shrink-0">
                                 {{ strtoupper(substr($client->name, 0, 1)) }}
                             </div>
                             <span class="text-sm font-medium text-gray-900">{{ $client->name }}</span>
-                            <span class="text-xs text-rose-500 ml-auto flex items-center gap-1">
+                            <span class="text-xs text-primary-500 ml-auto flex items-center gap-1">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
                                 Hoje!
                             </span>

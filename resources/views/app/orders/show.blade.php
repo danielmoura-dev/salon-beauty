@@ -6,7 +6,7 @@
 
     {{-- Breadcrumb --}}
     <div class="flex items-center gap-2 text-sm text-gray-400">
-        <a href="{{ route('orders') }}" class="hover:text-rose-600">Comandas</a>
+        <a href="{{ route('orders') }}" class="hover:text-primary-600">Comandas</a>
         <span>/</span>
         <span class="text-gray-700 font-medium">{{ $order->client->name }}</span>
     </div>
@@ -35,7 +35,7 @@
                 @if ($order->status === 'closed')
                     <form method="POST" action="{{ route('orders.reopen', $order) }}">
                         @csrf
-                        <button type="submit" class="text-xs text-gray-400 hover:text-rose-600 hover:underline">
+                        <button type="submit" class="text-xs text-gray-400 hover:text-primary-600 hover:underline">
                             Reabrir
                         </button>
                     </form>
@@ -50,7 +50,7 @@
             <h2 class="font-semibold text-gray-900">Itens</h2>
             @if ($order->status === 'open')
                 <button @click="showAddItem = true"
-                    class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700">
+                    class="rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700">
                     + Adicionar
                 </button>
             @endif
@@ -183,7 +183,7 @@
                             <input type="radio" name="type" value="{{ $val }}"
                                    x-model="itemType" class="peer sr-only">
                             <div class="rounded-xl border-2 py-2 text-center text-sm font-medium transition-colors
-                                        peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700
+                                        peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:text-primary-700
                                         border-gray-200 text-gray-500 hover:border-gray-300">
                                 {{ $label }}
                             </div>
@@ -195,7 +195,7 @@
                 <div x-show="itemType === 'service'">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Preencher a partir de:</label>
                     <select @change="fillFromService($event)"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Selecione um serviço…</option>
                         @foreach ($services as $svc)
                             <option value="{{ $svc->id }}"
@@ -212,7 +212,7 @@
                 <div x-show="itemType === 'product'">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Preencher a partir de:</label>
                     <select @change="fillFromProduct($event)"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Selecione um produto…</option>
                         @foreach ($products as $prod)
                             <option value="{{ $prod->id }}"
@@ -229,19 +229,19 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
                     <input type="text" name="description" x-model="itemDesc" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Qtd</label>
                         <input type="number" name="qty" x-model="itemQty" min="1" value="1"
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Valor unitário (R$)</label>
                         <input type="number" name="unit_price" x-model="itemPrice" step="0.01" min="0" required
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                 </div>
 
@@ -249,7 +249,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
                     <select name="professional_id"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Sem profissional</option>
                         @foreach ($professionals as $prof)
                             <option value="{{ $prof->id }}">{{ $prof->name }}</option>
@@ -260,14 +260,14 @@
                 <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
                     <span class="text-sm font-medium text-gray-700">Gera comissão</span>
                     <input type="checkbox" name="has_commission" value="1" x-model="hasCommission"
-                           class="rounded border-gray-300 text-rose-500 focus:ring-rose-500">
+                           class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
                 </label>
 
                 <div x-show="hasCommission">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Comissão (%)</label>
                     <input type="number" name="commission_pct" x-model="itemCommission"
                            min="0" max="100" step="0.5"
-                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
 
                 {{-- Preview do subtotal --}}
@@ -283,7 +283,7 @@
                         Cancelar
                     </button>
                     <button type="submit"
-                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
                         Adicionar
                     </button>
                 </div>
@@ -328,7 +328,7 @@
                             <label class="cursor-pointer">
                                 <input type="radio" name="method" value="{{ $val }}" class="peer sr-only" required>
                                 <div class="rounded-xl border-2 py-2 px-1 text-center text-xs font-medium transition-colors
-                                            peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700
+                                            peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:text-primary-700
                                             border-gray-200 text-gray-500 hover:border-gray-300">
                                     {{ $label }}
                                 </div>
@@ -342,13 +342,13 @@
                     <input type="number" name="amount" step="0.01" min="0.01"
                            value="{{ number_format(max($order->total - $order->totalPaid(), 0), 2, '.', '') }}"
                            required
-                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                     <input type="text" name="notes" placeholder="Ex: troco de R$50"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </div>
 
                 <div class="flex gap-2 pt-1">

@@ -11,7 +11,7 @@
             <p class="text-sm text-gray-400">{{ $date->translatedFormat('d \d\e F \d\e Y') }}</p>
         </div>
         <button @click="showNew = true"
-            class="sm:ml-auto rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+            class="sm:ml-auto rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
             + Nova Comanda
         </button>
     </div>
@@ -24,7 +24,7 @@
         </div>
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 text-center">
             <p class="text-xs text-gray-400 mb-1">Serviços</p>
-            <p class="text-xl font-bold text-rose-600">R$ {{ number_format($summary['services'], 2, ',', '.') }}</p>
+            <p class="text-xl font-bold text-primary-600">R$ {{ number_format($summary['services'], 2, ',', '.') }}</p>
         </div>
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 text-center">
             <p class="text-xs text-gray-400 mb-1">Produtos</p>
@@ -37,13 +37,13 @@
         <form method="GET" class="flex gap-2 flex-wrap">
             <input type="date" name="date" value="{{ $date->toDateString() }}"
                 onchange="this.form.submit()"
-                class="rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
 
             @foreach (['open' => 'Abertas', 'closed' => 'Fechadas', 'all' => 'Todas'] as $val => $label)
                 <button type="submit" name="status" value="{{ $val }}"
                     class="rounded-xl px-4 py-2 text-sm font-medium transition-colors
                            {{ $status === $val
-                               ? 'bg-rose-600 text-white'
+                               ? 'bg-primary-600 text-white'
                                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
                     {{ $label }}
                 </button>
@@ -56,11 +56,11 @@
         @forelse ($orders as $order)
             <a href="{{ route('orders.show', $order) }}"
                class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 shadow-sm
-                      px-4 py-3.5 hover:border-rose-200 transition-colors block">
+                      px-4 py-3.5 hover:border-primary-200 transition-colors block">
 
                 {{-- Avatar cliente --}}
-                <div class="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center
-                            text-rose-500 font-bold shrink-0">
+                <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center
+                            text-primary-500 font-bold shrink-0">
                     {{ strtoupper(substr($order->client->name, 0, 1)) }}
                 </div>
 
@@ -120,7 +120,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
                     <select name="client_id" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Selecione…</option>
                         @foreach ($clients as $client)
                             <option value="{{ $client->id }}">
@@ -137,7 +137,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                     <textarea name="notes" rows="2"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500"></textarea>
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
                 </div>
                 <div class="flex gap-2 pt-1">
                     <button type="button" @click="showNew = false"
@@ -145,7 +145,7 @@
                         Cancelar
                     </button>
                     <button type="submit"
-                        class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
                         Abrir Comanda
                     </button>
                 </div>

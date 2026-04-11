@@ -15,7 +15,7 @@
                 + Categoria
             </button>
             <button @click="openCreate()"
-                class="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+                class="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
                 + Novo Produto
             </button>
         </div>
@@ -50,7 +50,7 @@
                         <span class="text-xs text-gray-400">{{ $product->category?->name ?? 'Sem categoria' }}</span>
                         <div class="flex gap-2">
                             <button @click="openEdit({{ $product->toJson() }})"
-                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">
+                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-accent-50 text-accent-600 hover:bg-accent-100 transition-colors">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
                                 </svg>
@@ -91,17 +91,17 @@
             <div class="grid grid-cols-2 gap-3">
                 <x-form-field label="Nome *">
                     <input type="text" name="name" :value="editing?.name" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
                 <x-form-field label="Marca">
                     <input type="text" name="brand" :value="editing?.brand"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
             </div>
 
             <x-form-field label="Categoria">
                 <select name="category_id"
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="">Sem categoria</option>
                     @foreach ($categories as $cat)
                         <option value="{{ $cat->id }}" :selected="editing?.category_id === '{{ $cat->id }}'">
@@ -116,25 +116,25 @@
                 <input type="checkbox" name="for_sale" value="1"
                        :checked="editing?.for_sale"
                        x-model="forSale"
-                       class="rounded border-gray-300 text-rose-500 focus:ring-rose-500">
+                       class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
             </label>
 
             <div x-show="forSale" class="grid grid-cols-2 gap-3">
                 <x-form-field label="Preço (R$)">
                     <input type="number" name="price" :value="editing?.price" step="0.01" min="0"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
                 <x-form-field label="Comissão (%)">
                     <input type="number" name="commission_pct" :value="editing?.commission_pct ?? 0"
                            min="0" max="100" step="0.5"
-                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
             </div>
 
             <x-form-field label="Foto (opcional)">
                 <input type="file" name="photo" accept="image/*"
                     class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0
-                           file:bg-rose-50 file:px-3 file:py-1.5 file:text-rose-600 file:text-sm">
+                           file:bg-primary-50 file:px-3 file:py-1.5 file:text-primary-600 file:text-sm">
             </x-form-field>
 
             <div class="flex gap-2 pt-2">
@@ -143,7 +143,7 @@
                     Cancelar
                 </button>
                 <button type="submit" :disabled="submitting"
-                    class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                    class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
                     <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
                 </button>
@@ -158,7 +158,7 @@
             <input type="hidden" name="type" value="product">
             <x-form-field label="Nome da categoria *">
                 <input type="text" name="name" required autofocus
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             </x-form-field>
             <div class="flex gap-2 pt-2">
                 <button type="button" @click="$dispatch('close-modal-product-category')"
@@ -166,7 +166,7 @@
                     Cancelar
                 </button>
                 <button type="submit"
-                    class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">
+                    class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
                     Criar
                 </button>
             </div>

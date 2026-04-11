@@ -12,8 +12,8 @@
         </div>
         <div class="sm:ml-auto">
             <button @click="openCreate()"
-                class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-rose-600
-                       px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition-colors">
+                class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary-600
+                       px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition-colors">
                 + Novo Cliente
             </button>
         </div>
@@ -23,9 +23,9 @@
     <form method="GET" class="flex flex-col sm:flex-row gap-2">
         <input type="text" name="search" value="{{ request('search') }}"
             placeholder="Buscar por nome ou telefone…"
-            class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+            class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
         <select name="filter"
-            class="rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+            class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             <option value="">Todos</option>
             <option value="debtors" @selected(request('filter') === 'debtors')>Inadimplentes</option>
             <option value="credits" @selected(request('filter') === 'credits')>Com crédito</option>
@@ -46,8 +46,8 @@
                     <img src="{{ Storage::url($client->photo) }}"
                          class="h-11 w-11 rounded-full object-cover shrink-0" alt="">
                 @else
-                    <div class="h-11 w-11 rounded-full bg-rose-100 flex items-center justify-center
-                                text-rose-500 font-semibold text-sm shrink-0">
+                    <div class="h-11 w-11 rounded-full bg-primary-100 flex items-center justify-center
+                                text-primary-500 font-semibold text-sm shrink-0">
                         {{ strtoupper(substr($client->name, 0, 1)) }}
                     </div>
                 @endif
@@ -69,7 +69,7 @@
                 {{-- Ações --}}
                 <div class="flex items-center gap-2 shrink-0">
                     <button @click="openEdit({{ $client->toJson() }})"
-                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">
+                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-accent-50 text-accent-600 hover:bg-accent-100 transition-colors">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
                         </svg>
@@ -113,36 +113,36 @@
 
             <x-form-field label="Nome *">
                 <input type="text" name="name" :value="editingClient?.name" required
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             </x-form-field>
 
             <div class="grid grid-cols-2 gap-3">
                 <x-form-field label="Telefone">
                     <input type="tel" name="phone" :value="editingClient?.phone"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
                 <x-form-field label="Aniversário">
                     <input type="date" name="birthday" :value="editingClient?.birthday?.substring(0, 10)"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
             </div>
 
             <x-form-field label="E-mail">
                 <input type="email" name="email" :value="editingClient?.email"
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             </x-form-field>
 
             <x-form-field label="Observações">
                 <textarea name="notes" rows="2"
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500"
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
                     x-text="editingClient?.notes"></textarea>
             </x-form-field>
 
             <x-form-field label="Foto (opcional)">
                 <input type="file" name="photo" accept="image/*"
                     class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0
-                           file:bg-rose-50 file:px-3 file:py-1.5 file:text-rose-600 file:text-sm
-                           hover:file:bg-rose-100">
+                           file:bg-primary-50 file:px-3 file:py-1.5 file:text-primary-600 file:text-sm
+                           hover:file:bg-primary-100">
             </x-form-field>
 
             <div class="flex gap-2 pt-2">
@@ -151,7 +151,7 @@
                     Cancelar
                 </button>
                 <button type="submit" :disabled="submitting"
-                    class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                    class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
                     <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
                 </button>

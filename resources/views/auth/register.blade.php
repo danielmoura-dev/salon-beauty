@@ -10,7 +10,7 @@
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Seu nome</label>
         <input type="text" name="name" value="{{ old('name') }}" required autofocus
-            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500
+            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500
                    @error('name') border-red-400 @enderror">
         @error('name')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
     </div>
@@ -19,7 +19,7 @@
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Nome do estabelecimento</label>
         <input type="text" name="business_name" value="{{ old('business_name') }}" required
-            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500
+            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500
                    @error('business_name') border-red-400 @enderror">
         @error('business_name')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
     </div>
@@ -28,7 +28,7 @@
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
         <input type="email" name="email" value="{{ old('email') }}" required
-            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500
+            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500
                    @error('email') border-red-400 @enderror">
         @error('email')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
     </div>
@@ -38,7 +38,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
         <div class="relative">
             <input :type="show ? 'text' : 'password'" name="password" required
-                class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500 pr-10
+                class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500 pr-10
                        @error('password') border-red-400 @enderror">
             <button type="button" @click="show = !show"
                 class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
@@ -54,7 +54,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar senha</label>
         <div class="relative">
             <input :type="show ? 'text' : 'password'" name="password_confirmation" required
-                class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500 pr-10">
+                class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500 pr-10">
             <button type="button" @click="show = !show"
                 class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
                 <svg x-show="!show" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -64,7 +64,7 @@
     </div>
 
     <button type="submit" :disabled="loading"
-        class="w-full rounded-xl bg-rose-600 py-3 text-white font-semibold hover:bg-rose-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+        class="w-full rounded-xl bg-primary-600 py-3 text-white font-semibold hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
         <svg x-show="loading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -92,7 +92,7 @@
     </a>
 
     <p class="text-center text-sm text-gray-500">
-        Já tem conta? <a href="{{ route('login') }}" class="text-rose-600 font-medium hover:underline">Entrar</a>
+        Já tem conta? <a href="{{ route('login') }}" class="text-primary-600 font-medium hover:underline">Entrar</a>
     </p>
 </form>
 @endsection

@@ -10,7 +10,7 @@
     </div>
 
     {{-- Card do plano --}}
-    <div class="rounded-2xl border-2 border-rose-500 bg-white shadow-sm p-6 text-center">
+    <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
         <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
         <p class="text-gray-400 text-sm mt-1">por mês</p>
 
@@ -41,12 +41,12 @@
             @csrf
             <button type="submit"
                 class="w-full flex items-center justify-between rounded-2xl border-2 border-gray-200
-                       px-5 py-4 hover:border-rose-400 hover:bg-rose-50 transition-colors group">
+                       px-5 py-4 hover:border-primary-400 hover:bg-primary-50 transition-colors group">
                 <div class="text-left">
-                    <p class="font-semibold text-gray-900 group-hover:text-rose-700">Cartão de crédito</p>
+                    <p class="font-semibold text-gray-900 group-hover:text-primary-700">Cartão de crédito</p>
                     <p class="text-xs text-gray-400">Cobrança automática mensal via Stripe</p>
                 </div>
-                <svg class="h-5 w-5 text-gray-300 group-hover:text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="h-5 w-5 text-gray-300 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                 </svg>
             </button>
@@ -57,12 +57,12 @@
             @csrf
             <button type="submit"
                 class="w-full flex items-center justify-between rounded-2xl border-2 border-gray-200
-                       px-5 py-4 hover:border-rose-400 hover:bg-rose-50 transition-colors group">
+                       px-5 py-4 hover:border-primary-400 hover:bg-primary-50 transition-colors group">
                 <div class="text-left">
-                    <p class="font-semibold text-gray-900 group-hover:text-rose-700">Pix recorrente</p>
+                    <p class="font-semibold text-gray-900 group-hover:text-primary-700">Pix recorrente</p>
                     <p class="text-xs text-gray-400">Autorize via Mercado Pago, pague com Pix</p>
                 </div>
-                <svg class="h-5 w-5 text-gray-300 group-hover:text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="h-5 w-5 text-gray-300 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
                 </svg>
             </button>

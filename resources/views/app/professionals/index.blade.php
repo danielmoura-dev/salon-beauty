@@ -10,8 +10,8 @@
             <p class="text-sm text-gray-400">{{ $professionals->count() }} cadastrados</p>
         </div>
         <button @click="openCreate()"
-            class="ml-auto flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5
-                   text-sm font-semibold text-white hover:bg-rose-700 transition-colors">
+            class="ml-auto flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5
+                   text-sm font-semibold text-white hover:bg-primary-700 transition-colors">
             + Novo Profissional
         </button>
     </div>
@@ -24,8 +24,8 @@
                         <img src="{{ Storage::url($prof->photo) }}"
                              class="h-12 w-12 rounded-full object-cover shrink-0" alt="">
                     @else
-                        <div class="h-12 w-12 rounded-full bg-rose-100 flex items-center justify-center
-                                    text-rose-500 font-bold shrink-0">
+                        <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center
+                                    text-primary-500 font-bold shrink-0">
                             {{ strtoupper(substr($prof->name, 0, 1)) }}
                         </div>
                     @endif
@@ -45,7 +45,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button @click="openEdit({{ $prof->toJson() }})"
-                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">
+                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-accent-50 text-accent-600 hover:bg-accent-100 transition-colors">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
                             </svg>
@@ -84,17 +84,17 @@
 
             <x-form-field label="Nome *">
                 <input type="text" name="name" :value="editing?.name" required
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             </x-form-field>
 
             <div class="grid grid-cols-2 gap-3">
                 <x-form-field label="Especialidade">
                     <input type="text" name="specialty" :value="editing?.specialty"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
                 <x-form-field label="Aniversário">
                     <input type="date" name="birthday" :value="editing?.birthday?.substring(0, 10)"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
             </div>
 
@@ -104,14 +104,14 @@
                     <span class="text-sm font-medium text-gray-700">Mostrar na agenda</span>
                     <input type="checkbox" name="show_on_agenda" value="1"
                            :checked="editing ? editing.show_on_agenda : true"
-                           class="rounded border-gray-300 text-rose-500 focus:ring-rose-500">
+                           class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
                 </label>
                 <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
                     <span class="text-sm font-medium text-gray-700">Recebe comissão</span>
                     <input type="checkbox" name="receives_commission" value="1"
                            :checked="editing ? editing.receives_commission : true"
                            x-model="receivesCommission"
-                           class="rounded border-gray-300 text-rose-500 focus:ring-rose-500">
+                           class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
                 </label>
             </div>
 
@@ -119,15 +119,15 @@
                 <x-form-field label="Comissão padrão (%)">
                     <input type="number" name="commission_pct" :value="editing?.commission_pct ?? 0"
                            min="0" max="100" step="0.5"
-                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-rose-500 focus:border-rose-500">
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                 </x-form-field>
             </div>
 
             <x-form-field label="Foto (opcional)">
                 <input type="file" name="photo" accept="image/*"
                     class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0
-                           file:bg-rose-50 file:px-3 file:py-1.5 file:text-rose-600 file:text-sm
-                           hover:file:bg-rose-100">
+                           file:bg-primary-50 file:px-3 file:py-1.5 file:text-primary-600 file:text-sm
+                           hover:file:bg-primary-100">
             </x-form-field>
 
             <div class="flex gap-2 pt-2">
@@ -136,7 +136,7 @@
                     Cancelar
                 </button>
                 <button type="submit" :disabled="submitting"
-                    class="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                    class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
                     <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
                 </button>

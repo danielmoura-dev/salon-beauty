@@ -10,7 +10,7 @@
         Isso pode levar alguns segundos. Sua conta será ativada automaticamente.
     </p>
     <a href="{{ route('dashboard') }}"
-       class="inline-block rounded-xl bg-rose-600 px-6 py-3 text-sm font-semibold text-white hover:bg-rose-700">
+       class="inline-block rounded-xl bg-primary-600 px-6 py-3 text-sm font-semibold text-white hover:bg-primary-700">
         Voltar ao Dashboard
     </a>
 </div>

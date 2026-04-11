@@ -13,10 +13,10 @@
     {{-- Foto de perfil --}}
     <div class="flex flex-col items-center gap-3">
         <div id="avatar-preview"
-            class="h-20 w-20 rounded-full bg-rose-100 flex items-center justify-center text-rose-400 text-3xl overflow-hidden">
-            <svg class="h-10 w-10 text-rose-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+            class="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center text-primary-400 text-3xl overflow-hidden">
+            <svg class="h-10 w-10 text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
         </div>
-        <label class="cursor-pointer text-sm text-rose-600 font-medium hover:underline">
+        <label class="cursor-pointer text-sm text-primary-600 font-medium hover:underline">
             Adicionar foto de perfil
             <input type="file" name="avatar" accept="image/*" class="hidden"
                 onchange="previewAvatar(this)">
@@ -28,12 +28,12 @@
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (opcional)</label>
         <input type="tel" name="phone" value="{{ old('phone') }}" placeholder="(85) 99999-9999"
-            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-rose-500 focus:border-rose-500">
+            class="w-full rounded-xl border-gray-300 shadow-sm focus:ring-primary-500 focus:border-primary-500">
         @error('phone')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
     </div>
 
     <button type="submit"
-        class="w-full rounded-xl bg-rose-600 py-3 text-white font-semibold hover:bg-rose-700 transition-colors">
+        class="w-full rounded-xl bg-primary-600 py-3 text-white font-semibold hover:bg-primary-700 transition-colors">
         Concluir configuração
     </button>
 
