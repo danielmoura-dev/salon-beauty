@@ -52,6 +52,11 @@ class Appointment extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
+    }
+
     // Duração em minutos
     public function durationMinutes(): int
     {

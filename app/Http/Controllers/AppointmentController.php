@@ -26,7 +26,7 @@ class AppointmentController extends Controller
             ->get();
 
         // Agendamentos do dia, agrupados por profissional
-        $appointments = Appointment::with(['client', 'professional'])
+        $appointments = Appointment::with(['client', 'professional', 'service'])
             ->whereDate('date', $date)
             ->whereIn('professional_id', $professionals->pluck('id'))
             ->whereNotIn('status', ['cancelled'])
@@ -56,6 +56,12 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
+        // Normaliza horários para H:i (remove segundos se o browser enviar H:i:s)
+        $request->merge([
+            'start_time' => substr($request->input('start_time', ''), 0, 5),
+            'end_time'   => substr($request->input('end_time', ''), 0, 5),
+        ]);
+
         $data = $request->validate([
             'client_id'       => ['required', 'uuid', 'exists:clients,id'],
             'professional_id' => ['required', 'uuid', 'exists:professionals,id'],
@@ -112,6 +118,14 @@ class AppointmentController extends Controller
 
     public function update(Request $request, Appointment $appointment)
     {
+        // Normaliza horários para H:i (remove segundos se o browser enviar H:i:s)
+        if ($request->has('start_time')) {
+            $request->merge(['start_time' => substr($request->input('start_time'), 0, 5)]);
+        }
+        if ($request->has('end_time')) {
+            $request->merge(['end_time' => substr($request->input('end_time'), 0, 5)]);
+        }
+
         $data = $request->validate([
             'client_id'       => ['sometimes', 'uuid', 'exists:clients,id'],
             'professional_id' => ['sometimes', 'uuid', 'exists:professionals,id'],

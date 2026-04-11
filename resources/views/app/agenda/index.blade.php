@@ -114,12 +114,15 @@
                                 style="top: {{ $apt->gridTop($startHour) }}px; height: {{ max($apt->gridHeight() - 4, 28) }}px;"
                                 @click.stop="openDetail({{ $apt->load('client')->toJson() }})"
                             >
-                                <p class="text-xs font-semibold {{ $cfg['text'] }} truncate leading-tight">
-                                    {{ $apt->start_time }} {{ $apt->client->name }}
+                                <p class="text-xs font-bold {{ $cfg['text'] }} leading-tight">
+                                    {{ $apt->start_time }} às {{ $apt->end_time }}
                                 </p>
-                                @if ($apt->gridHeight() > 40)
-                                    <p class="text-xs {{ $cfg['text'] }} opacity-70 truncate">
-                                        {{ $apt->durationMinutes() }}min
+                                <p class="text-xs font-semibold {{ $cfg['text'] }} truncate leading-tight">
+                                    {{ $apt->client->name }}
+                                </p>
+                                @if ($apt->gridHeight() > 48)
+                                    <p class="text-xs {{ $cfg['text'] }} opacity-75 truncate leading-tight">
+                                        – {{ $apt->service?->name ?? '' }}
                                     </p>
                                 @endif
                             </div>
