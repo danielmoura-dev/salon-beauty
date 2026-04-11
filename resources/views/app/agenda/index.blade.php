@@ -50,7 +50,7 @@
         <div class="flex min-w-max" id="agenda-header-inner">
             <div class="w-16 shrink-0 border-r border-gray-100 h-12"></div>
             @foreach ($professionals as $professional)
-                <div class="w-56 sm:w-72 shrink-0 h-12 border-r border-gray-100 last:border-r-0
+                <div class="w-64 sm:w-80 shrink-0 h-12 border-r border-gray-100 last:border-r-0
                             flex items-center justify-center gap-2 px-2">
                     @if ($professional->photo)
                         <img src="{{ Storage::url($professional->photo) }}"
@@ -99,7 +99,7 @@
                     $unavailableHeightPx = (24 - $endHour) * 2 * 48;
                 @endphp
 
-                <div class="w-56 sm:w-72 shrink-0 border-r border-gray-300 last:border-r-0">
+                <div class="w-64 sm:w-80 shrink-0 border-r border-gray-300 last:border-r-0">
 
                     {{-- Slots + Cards --}}
                     <div class="relative">
@@ -135,15 +135,64 @@
                             </div>
                         @endif
 
-                        {{-- Cards de agendamento --}}
+                        {{-- Cards de agendamento (com algoritmo de sobreposição em cascata por cluster) --}}
+                        @php
+                            $sorted    = $profAppointments->sortBy('start_time')->values();
+                            $colEnds   = [];  // colIdx => end_time
+                            $aptColIdx = [];  // apt->id => colIdx
+
+                            // 1. Atribuir coluna a cada card
+                            foreach ($sorted as $a) {
+                                $s      = substr($a->start_time, 0, 5);
+                                $e      = substr($a->end_time,   0, 5);
+                                $placed = false;
+                                foreach ($colEnds as $ci => $ce) {
+                                    if ($s >= $ce) {
+                                        $colEnds[$ci]      = $e;
+                                        $aptColIdx[$a->id] = $ci;
+                                        $placed            = true;
+                                        break;
+                                    }
+                                }
+                                if (!$placed) {
+                                    $ci                = count($colEnds);
+                                    $colEnds[$ci]      = $e;
+                                    $aptColIdx[$a->id] = $ci;
+                                }
+                            }
+
+                            // 2. Para cada card, calcular quantas colunas usa o seu cluster de sobreposição
+                            $aptTotalCols = [];
+                            foreach ($sorted as $a) {
+                                $aS     = substr($a->start_time, 0, 5);
+                                $aE     = substr($a->end_time,   0, 5);
+                                $maxCol = 0;
+                                foreach ($sorted as $b) {
+                                    $bS = substr($b->start_time, 0, 5);
+                                    $bE = substr($b->end_time,   0, 5);
+                                    if ($aS < $bE && $aE > $bS) {
+                                        $maxCol = max($maxCol, $aptColIdx[$b->id]);
+                                    }
+                                }
+                                $aptTotalCols[$a->id] = $maxCol + 1;
+                            }
+                        @endphp
+
                         @foreach ($profAppointments as $apt)
-                            @php $cfg = $apt->statusConfig(); @endphp
+                            @php
+                                $cfg   = $apt->statusConfig();
+                                $ci    = $aptColIdx[$apt->id] ?? 0;
+                                $total = $aptTotalCols[$apt->id] ?? 1;
+                                $wPct  = 100 / $total;
+                                $lPct  = $ci * $wPct;
+                                $zIdx  = 10 + $ci;
+                            @endphp
                             <div
                                 data-apt-id="{{ $apt->id }}"
-                                class="absolute left-1 right-1 rounded-xl border px-2 py-1 cursor-pointer overflow-hidden z-10
+                                class="absolute rounded-xl border px-2 py-1 cursor-pointer overflow-hidden
                                        {{ $cfg['bg'] }} {{ $cfg['border'] }} hover:brightness-95 transition-all"
-                                style="top: {{ $apt->gridTop($startHour) }}px; height: {{ max($apt->gridHeight() - 4, 24) }}px;"
-                                @click.stop="openDetail({{ $apt->load('client')->toJson() }})"
+                                style="top:{{ $apt->gridTop($startHour) }}px; height:{{ max($apt->gridHeight() - 4, 24) }}px; left:calc({{ $lPct }}% + 2px); width:calc({{ $wPct }}% - 4px); z-index:{{ $zIdx }};"
+                                @click.stop="openDetail({{ $apt->load(['client', 'service'])->toJson() }})"
                             >
                                 <p class="text-xs font-bold {{ $cfg['text'] }} leading-tight">
                                     {{ substr($apt->start_time, 0, 5) }} às {{ substr($apt->end_time, 0, 5) }}
@@ -195,7 +244,35 @@
                 <button @click="showNew = false" class="text-gray-400 hover:text-gray-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
 
-            <form @submit.prevent="submitAppointment()" class="space-y-4">
+            {{-- Alerta de conflito --}}
+            <div x-show="showConflict" x-cloak class="rounded-xl bg-yellow-50 border border-yellow-200 p-4 space-y-3">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-100">
+                        <svg class="h-4 w-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-yellow-800">Conflito de horário detectado</p>
+                        <template x-for="c in conflictInfo" :key="c.id">
+                            <p class="text-xs text-yellow-700 mt-0.5" x-text="'• ' + c.start_time + ' – ' + c.end_time"></p>
+                        </template>
+                        <p class="text-xs text-yellow-600 mt-1">Deseja criar o agendamento mesmo assim?</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" @click="showConflict = false"
+                        class="flex-1 rounded-xl border border-yellow-300 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100">
+                        Voltar
+                    </button>
+                    <button type="button" @click="submitAppointment(true)" :disabled="saving"
+                        class="flex-1 rounded-xl bg-primary-600 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
+                        + Agendamento
+                    </button>
+                </div>
+            </div>
+
+            <form x-show="!showConflict" @submit.prevent="submitAppointment()" class="space-y-4">
 
                 {{-- Cliente --}}
                 <div>
@@ -307,7 +384,7 @@
          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
          style="display:none">
         <div class="absolute inset-0 bg-black/40" @click="showDetail = false"></div>
-        <div class="relative w-full max-w-sm rounded-2xl bg-white shadow-xl overflow-hidden"
+        <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-y-4"
              x-transition:enter-end="opacity-100 translate-y-0"
@@ -317,13 +394,48 @@
             <div class="h-1.5 w-full" :class="statusBg(detail?.status)"></div>
 
             <div class="p-5 space-y-4">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="font-bold text-gray-900 text-base" x-text="detail?.client?.name"></p>
-                        <p class="text-sm text-gray-400"
-                           x-text="detail?.date?.substring(0,10) + ' · ' + detail?.start_time + ' – ' + detail?.end_time"></p>
+
+                {{-- Header: foto + nome + saldo + fechar --}}
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        {{-- Avatar --}}
+                        <div class="shrink-0">
+                            <img x-show="detail?.client?.photo"
+                                 :src="'/storage/' + detail?.client?.photo"
+                                 class="h-11 w-11 rounded-full object-cover">
+                            <div x-show="!detail?.client?.photo"
+                                 class="h-11 w-11 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-base"
+                                 x-text="detail?.client?.name?.charAt(0)?.toUpperCase()">
+                            </div>
+                        </div>
+                        {{-- Nome + saldo --}}
+                        <div class="min-w-0">
+                            <p class="font-bold text-gray-900 text-base truncate" x-text="detail?.client?.name"></p>
+                            <p x-show="detail?.client?.balance > 0"
+                               class="text-xs font-medium text-green-600"
+                               x-text="'Crédito: R$ ' + Number(detail?.client?.balance).toFixed(2).replace('.', ',')"></p>
+                            <p x-show="detail?.client?.balance < 0"
+                               class="text-xs font-medium text-red-600"
+                               x-text="'Débito: R$ ' + Number(Math.abs(detail?.client?.balance)).toFixed(2).replace('.', ',')"></p>
+                            <p x-show="!detail?.client?.balance || detail?.client?.balance == 0"
+                               class="text-xs text-gray-400">Sem saldo</p>
+                        </div>
                     </div>
-                    <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600 mt-0.5"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                    <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600 shrink-0 mt-0.5">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                {{-- Data, hora e serviço --}}
+                <div class="rounded-xl bg-gray-50 px-3 py-2.5 space-y-1">
+                    <p class="text-sm text-gray-700">
+                        <span class="font-medium" x-text="detail?.date?.substring(0,10)"></span>
+                        <span class="text-gray-400 mx-1">·</span>
+                        <span x-text="detail?.start_time?.substring(0,5) + ' – ' + detail?.end_time?.substring(0,5)"></span>
+                    </p>
+                    <p x-show="detail?.service?.name"
+                       class="text-sm text-gray-500"
+                       x-text="detail?.service?.name"></p>
                 </div>
 
                 {{-- Status badge --}}
@@ -342,14 +454,22 @@
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                         Alterar status
                     </label>
-                    <div class="flex flex-wrap gap-1.5">
+                    @php
+                        $activeBtnCls = [
+                            'scheduled' => 'bg-blue-600 text-white border-blue-700',
+                            'confirmed' => 'bg-green-600 text-white border-green-700',
+                            'completed' => 'bg-gray-500 text-white border-gray-600',
+                            'cancelled' => 'bg-red-600 text-white border-red-700',
+                        ];
+                    @endphp
+                    <div class="flex gap-2">
                         @foreach (\App\Models\Appointment::$statusConfig as $key => $cfg)
                             <button
                                 @click="changeStatus('{{ $key }}')"
                                 :class="detail?.status === '{{ $key }}'
-                                    ? '{{ $cfg['bg'] }} {{ $cfg['text'] }} {{ $cfg['border'] }} border'
-                                    : 'bg-gray-100 text-gray-500 border border-transparent hover:bg-gray-200'"
-                                class="text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors">
+                                    ? '{{ $activeBtnCls[$key] }} border'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'"
+                                class="flex-1 text-sm font-medium py-2 rounded-xl border transition-colors whitespace-nowrap">
                                 {{ $cfg['label'] }}
                             </button>
                         @endforeach
@@ -358,12 +478,16 @@
 
                 {{-- Ações --}}
                 <div class="flex gap-2 pt-1">
-                    <a x-show="detail?.order_id"
-                       :href="'/orders/' + detail?.order_id"
-                       class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold
-                              text-primary-700 text-center hover:bg-primary-100">
+                    <button x-show="detail?.order_id"
+                            @click="showDetail = false; $dispatch('open-order-modal', { orderId: detail.order_id })"
+                            class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold
+                                   text-primary-700 text-center hover:bg-primary-100">
                         Ver Comanda
-                    </a>
+                    </button>
+                    <button @click="openAtSameSlot()"
+                        class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold text-primary-600 hover:bg-primary-100">
+                        Agendamento
+                    </button>
                     <button @click="openEditAppointment()"
                         class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold text-primary-600 hover:bg-primary-100">
                         Editar
@@ -418,15 +542,27 @@
 function agenda() {
     const services = @json($services->keyBy('id'));
 
+    @php
+        $aptsByProfJson = $appointments->map(fn($apts) => $apts->map(fn($a) => [
+            'id'         => $a->id,
+            'start_time' => substr($a->start_time, 0, 5),
+            'end_time'   => substr($a->end_time,   0, 5),
+        ])->values());
+    @endphp
+    const aptsByProfessional = @json($aptsByProfJson);
+
     return {
         showNew: false,
         showDetail: false,
+        showConflict: false,
+        conflictInfo: [],
         saving: false,
         formError: '',
         deleteAll: false,
         confirmDelete: false,
         detail: null,
         editingId: null,
+        statusOverrides: {},
 
         form: {
             client_id: '',
@@ -441,20 +577,30 @@ function agenda() {
         },
 
         openNewAppointment(professionalId, date, slot) {
-            this.editingId = null;
+            this.editingId    = null;
+            this.showConflict = false;
+            this.conflictInfo = [];
             this.form = {
-                client_id: '',
+                client_id:       '',
                 professional_id: professionalId,
-                service_id: '',
-                date: date,
-                start_time: slot,
-                end_time: this.addMinutes(slot, 60),
-                recurrence: 'none',
-                create_order: true,
-                notes: '',
+                service_id:      '',
+                date:            date,
+                start_time:      slot,
+                end_time:        this.addMinutes(slot, 60),
+                recurrence:      'none',
+                create_order:    true,
+                notes:           '',
             };
             this.formError = '';
-            this.showNew = true;
+            this.showNew   = true;
+        },
+
+        openAtSameSlot() {
+            const profId = this.detail.professional_id;
+            const date   = this.detail.date?.substring(0, 10);
+            const slot   = this.detail.start_time?.substring(0, 5);
+            this.showDetail = false;
+            this.openNewAppointment(profId, date, slot);
         },
 
         openEditAppointment() {
@@ -494,7 +640,26 @@ function agenda() {
             return String(Math.floor(total / 60) % 24).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
         },
 
-        async submitAppointment() {
+        getConflicts() {
+            const apts     = aptsByProfessional[this.form.professional_id] ?? [];
+            const newStart = this.form.start_time.substring(0, 5);
+            const newEnd   = this.form.end_time.substring(0, 5);
+            return apts.filter(a => {
+                if (this.editingId && a.id === this.editingId) return false;
+                return newStart < a.end_time && newEnd > a.start_time;
+            });
+        },
+
+        async submitAppointment(force = false) {
+            if (!force) {
+                const conflicts = this.getConflicts();
+                if (conflicts.length > 0) {
+                    this.conflictInfo = conflicts;
+                    this.showConflict = true;
+                    return;
+                }
+            }
+            this.showConflict = false;
             this.saving = true;
             this.formError = '';
             try {
@@ -528,14 +693,25 @@ function agenda() {
         },
 
         openDetail(appointment) {
-            this.detail = appointment;
+            this.detail = { ...appointment };
+            if (this.statusOverrides[appointment.id] !== undefined) {
+                this.detail.status = this.statusOverrides[appointment.id];
+            }
             this.deleteAll = false;
             this.confirmDelete = false;
             this.showDetail = true;
         },
 
         async changeStatus(status) {
+            this.statusOverrides[this.detail.id] = status;
             this.detail.status = status;
+            this.showDetail = false;
+
+            if (status === 'completed' && this.detail.order_id) {
+                window.dispatchEvent(new CustomEvent('open-order-modal', {
+                    detail: { orderId: this.detail.order_id }
+                }));
+            }
 
             await fetch(`/appointments/${this.detail.id}`, {
                 method: 'PATCH',
@@ -549,9 +725,9 @@ function agenda() {
             // Atualiza o card na grade sem reload
             const card = document.querySelector(`[data-apt-id="${this.detail.id}"]`);
             if (card) {
-                const bgMap     = { scheduled:'bg-blue-100',   confirmed:'bg-green-100',  in_progress:'bg-yellow-100', completed:'bg-gray-100',  cancelled:'bg-red-100',   no_show:'bg-orange-100'  };
-                const borderMap = { scheduled:'border-blue-300', confirmed:'border-green-300', in_progress:'border-yellow-300', completed:'border-gray-300', cancelled:'border-red-300', no_show:'border-orange-300' };
-                const textMap   = { scheduled:'text-blue-700', confirmed:'text-green-700', in_progress:'text-yellow-700', completed:'text-gray-600', cancelled:'text-red-600', no_show:'text-orange-700' };
+                const bgMap     = { scheduled:'bg-blue-100',   confirmed:'bg-green-100', completed:'bg-gray-100',  cancelled:'bg-red-100'   };
+                const borderMap = { scheduled:'border-blue-300', confirmed:'border-green-300', completed:'border-gray-300', cancelled:'border-red-300' };
+                const textMap   = { scheduled:'text-blue-700', confirmed:'text-green-700', completed:'text-gray-600', cancelled:'text-red-600' };
 
                 Object.values(bgMap).forEach(c => card.classList.remove(c));
                 Object.values(borderMap).forEach(c => card.classList.remove(c));
@@ -580,36 +756,30 @@ function agenda() {
 
         statusLabel(status) {
             const map = {
-                scheduled:   'Agendado',
-                confirmed:   'Confirmado',
-                in_progress: 'Em atendimento',
-                completed:   'Finalizado',
-                cancelled:   'Cancelado',
-                no_show:     'Não compareceu',
+                scheduled: 'Agendado',
+                confirmed: 'Confirmado',
+                completed: 'Finalizado',
+                cancelled: 'Cancelado',
             };
             return map[status] ?? status;
         },
 
         statusBg(status) {
             const map = {
-                scheduled:   'bg-blue-400',
-                confirmed:   'bg-green-400',
-                in_progress: 'bg-yellow-400',
-                completed:   'bg-gray-400',
-                cancelled:   'bg-red-400',
-                no_show:     'bg-orange-400',
+                scheduled: 'bg-blue-400',
+                confirmed: 'bg-green-400',
+                completed: 'bg-gray-400',
+                cancelled: 'bg-red-400',
             };
             return map[status] ?? 'bg-gray-300';
         },
 
         statusBadge(status) {
             const map = {
-                scheduled:   'bg-blue-100 text-blue-700',
-                confirmed:   'bg-green-100 text-green-700',
-                in_progress: 'bg-yellow-100 text-yellow-700',
-                completed:   'bg-gray-100 text-gray-600',
-                cancelled:   'bg-red-100 text-red-600',
-                no_show:     'bg-orange-100 text-orange-700',
+                scheduled: 'bg-blue-100 text-blue-700',
+                confirmed: 'bg-green-100 text-green-700',
+                completed: 'bg-gray-100 text-gray-600',
+                cancelled: 'bg-red-100 text-red-600',
             };
             return map[status] ?? 'bg-gray-100 text-gray-500';
         },
@@ -629,4 +799,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
+
+<x-order-modal />
+
 @endsection

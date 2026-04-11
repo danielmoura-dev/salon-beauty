@@ -86,6 +86,23 @@ class OrderController extends Controller
         return view('app.orders.show', compact('order', 'professionals', 'services', 'products'));
     }
 
+    /** JSON: dados completos da comanda (para o modal) */
+    public function data(Order $order)
+    {
+        $order->load(['client', 'items.professional', 'payments', 'appointment']);
+        return response()->json($order);
+    }
+
+    /** JSON: listas de profissionais, serviços e produtos (para o modal) */
+    public function formData()
+    {
+        return response()->json([
+            'professionals' => Professional::orderBy('name')->get(['id', 'name']),
+            'services'      => Service::where('active', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct']),
+            'products'      => Product::where('active', true)->where('for_sale', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct']),
+        ]);
+    }
+
     // Adicionar item à comanda
     public function addItem(Request $request, Order $order)
     {
@@ -104,13 +121,22 @@ class OrderController extends Controller
         $order->items()->create($data);
         $order->recalcTotal();
 
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
         return back()->with('success', 'Item adicionado!');
     }
 
-    public function removeItem(Order $order, OrderItem $item)
+    public function removeItem(Request $request, Order $order, OrderItem $item)
     {
         $item->delete();
         $order->recalcTotal();
+
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
         return back()->with('success', 'Item removido.');
     }
 
@@ -134,25 +160,78 @@ class OrderController extends Controller
             $order->update(['status' => 'closed']);
         }
 
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
         return back()->with('success', 'Pagamento registrado!');
     }
 
-    public function close(Order $order)
+    public function close(Request $request, Order $order)
     {
         $order->update(['status' => 'closed']);
 
-        // Atualiza agendamento para "completed" se vinculado
         if ($order->appointment) {
             $order->appointment->update(['status' => 'completed']);
         }
 
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
         return back()->with('success', 'Comanda fechada!');
     }
 
-    public function reopen(Order $order)
+    public function reopen(Request $request, Order $order)
     {
         $order->update(['status' => 'open']);
+
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
         return back()->with('success', 'Comanda reaberta.');
+    }
+
+    public function cancel(Request $request, Order $order)
+    {
+        $order->update(['status' => 'cancelled']);
+
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
+        return back()->with('success', 'Comanda cancelada.');
+    }
+
+    public function clearPayments(Request $request, Order $order)
+    {
+        $order->load('payments', 'items', 'client');
+
+        $payments  = $order->payments;
+        $client    = $order->client;
+        $sumDebt   = (float) $payments->where('method', 'debt')->sum('amount');
+        $sumCredit = (float) $payments->where('method', 'credit')->sum('amount');
+        $totalPaid = (float) $payments->sum('amount');
+        $total     = (float) $order->total;
+
+        // Efeito líquido no saldo do cliente:
+        // debt e credit cada um decrementaram balance pelo seu valor;
+        // outros métodos: se totalPaid > total, o excesso foi adicionado como crédito.
+        // Reverter = sum_debt + sum_credit - max(0, totalPaid - total)
+        $excess    = max(0.0, round($totalPaid - $total, 2));
+        $reversal  = round($sumDebt + $sumCredit - $excess, 2);
+
+        if (abs($reversal) > 0.001) {
+            $client->balance = round((float) $client->balance + $reversal, 2);
+            $client->save();
+        }
+
+        $order->payments()->delete();
+        $order->update(['status' => 'open']);
+
+        $order->load(['client', 'items.professional', 'payments', 'appointment']);
+        return response()->json($order);
     }
 
     private function applyClientBalance(Order $order, string $method, float $amount): void

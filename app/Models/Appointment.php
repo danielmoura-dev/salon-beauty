@@ -24,12 +24,10 @@ class Appointment extends Model
 
     // Status label e cor para a view
     public static array $statusConfig = [
-        'scheduled'   => ['label' => 'Agendado',       'bg' => 'bg-blue-100',   'text' => 'text-blue-700',   'border' => 'border-blue-300'],
-        'confirmed'   => ['label' => 'Confirmado',      'bg' => 'bg-green-100',  'text' => 'text-green-700',  'border' => 'border-green-300'],
-        'in_progress' => ['label' => 'Em atendimento',  'bg' => 'bg-yellow-100', 'text' => 'text-yellow-700', 'border' => 'border-yellow-300'],
-        'completed'   => ['label' => 'Finalizado',      'bg' => 'bg-gray-100',   'text' => 'text-gray-600',   'border' => 'border-gray-300'],
-        'cancelled'   => ['label' => 'Cancelado',       'bg' => 'bg-red-100',    'text' => 'text-red-600',    'border' => 'border-red-300'],
-        'no_show'     => ['label' => 'Não compareceu',  'bg' => 'bg-orange-100', 'text' => 'text-orange-700', 'border' => 'border-orange-300'],
+        'scheduled'  => ['label' => 'Agendado',   'bg' => 'bg-blue-100',  'text' => 'text-blue-700',  'border' => 'border-blue-300'],
+        'confirmed'  => ['label' => 'Confirmado', 'bg' => 'bg-green-100', 'text' => 'text-green-700', 'border' => 'border-green-300'],
+        'completed'  => ['label' => 'Finalizado', 'bg' => 'bg-gray-100',  'text' => 'text-gray-600',  'border' => 'border-gray-300'],
+        'cancelled'  => ['label' => 'Cancelado',  'bg' => 'bg-red-100',   'text' => 'text-red-600',   'border' => 'border-red-300'],
     ];
 
     public function statusConfig(): array

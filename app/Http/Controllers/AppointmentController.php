@@ -133,7 +133,7 @@ class AppointmentController extends Controller
             'date'            => ['sometimes', 'date'],
             'start_time'      => ['sometimes', 'date_format:H:i'],
             'end_time'        => ['sometimes', 'date_format:H:i'],
-            'status'          => ['sometimes', 'in:scheduled,confirmed,in_progress,completed,cancelled,no_show'],
+            'status'          => ['sometimes', 'in:scheduled,confirmed,completed,cancelled'],
             'recurrence'      => ['sometimes', 'in:none,weekly,biweekly,monthly'],
             'notes'           => ['nullable', 'string', 'max:500'],
         ]);
