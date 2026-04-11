@@ -48,9 +48,9 @@
     {{-- Cabeçalho dos profissionais: sticky vertical, overflow oculto (sincronizado via JS) --}}
     <div class="sticky top-0 z-20 bg-white border-b border-gray-100 overflow-hidden" id="agenda-header">
         <div class="flex min-w-max" id="agenda-header-inner">
-            <div class="w-16 shrink-0 border-r border-gray-100 h-10"></div>
+            <div class="w-16 shrink-0 border-r border-gray-100 h-12"></div>
             @foreach ($professionals as $professional)
-                <div class="w-48 sm:w-56 shrink-0 h-10 border-r border-gray-100 last:border-r-0
+                <div class="w-56 sm:w-72 shrink-0 h-12 border-r border-gray-100 last:border-r-0
                             flex items-center justify-center gap-2 px-2">
                     @if ($professional->photo)
                         <img src="{{ Storage::url($professional->photo) }}"
@@ -74,12 +74,19 @@
             <div class="flex">
 
             {{-- Coluna de horas --}}
-            <div class="sticky left-0 z-10 bg-white border-r border-gray-100 w-16 shrink-0">
+            <div class="sticky left-0 z-20 bg-white border-r border-gray-300 w-16 shrink-0">
                 @foreach ($slots as $slot)
-                    <div class="h-16 flex items-start justify-end pr-2 pt-1">
-                        @if (str_ends_with($slot, ':00'))
-                            <span class="text-xs text-gray-400 font-medium">{{ $slot }}</span>
-                        @endif
+                    @php
+                        [$slotH, $slotM] = explode(':', $slot);
+                        $slotIsUnavailable = (int)$slotH * 60 + (int)$slotM >= $endHour * 60;
+                    @endphp
+                    <div class="h-12 flex items-center justify-end pr-2">
+                        <span class="text-xs font-medium border rounded px-1 py-0.5 leading-none
+                            {{ $slotIsUnavailable
+                                ? 'text-gray-300 border-gray-200'
+                                : 'text-gray-400 border-gray-300' }}">
+                            {{ $slot }}
+                        </span>
                     </div>
                 @endforeach
             </div>
@@ -88,34 +95,58 @@
             @foreach ($professionals as $professional)
                 @php
                     $profAppointments = $appointments[$professional->id] ?? collect();
+                    $unavailableTopPx    = ($endHour - $startHour) * 2 * 48;
+                    $unavailableHeightPx = (24 - $endHour) * 2 * 48;
                 @endphp
 
-                <div class="w-48 sm:w-56 shrink-0 border-r border-gray-100 last:border-r-0">
+                <div class="w-56 sm:w-72 shrink-0 border-r border-gray-300 last:border-r-0">
 
                     {{-- Slots + Cards --}}
                     <div class="relative">
 
-                        {{-- Linhas de slot (fundo clicável) --}}
+                        {{-- Linhas de slot (fundo clicável / indisponível) --}}
                         @foreach ($slots as $slot)
+                            @php
+                                [$slotH2, $slotM2] = explode(':', $slot);
+                                $isUnavailable = (int)$slotH2 * 60 + (int)$slotM2 >= $endHour * 60;
+                                $isHour = str_ends_with($slot, ':00');
+                            @endphp
                             <div
-                                class="h-16 border-b border-gray-50 cursor-pointer hover:bg-primary-50/40 transition-colors
-                                       {{ str_ends_with($slot, ':30') ? 'border-dashed' : '' }}"
-                                @click="openNewAppointment('{{ $professional->id }}', '{{ $date->toDateString() }}', '{{ $slot }}')"
+                                class="h-12 border-b transition-colors
+                                    {{ $isUnavailable
+                                        ? 'bg-gray-50 border-gray-100 cursor-default'
+                                        : ($isHour
+                                            ? 'border-gray-300 cursor-pointer hover:bg-primary-50/40'
+                                            : 'border-dashed border-gray-200 cursor-pointer hover:bg-primary-50/40') }}"
+                                @if (!$isUnavailable)
+                                    @click="openNewAppointment('{{ $professional->id }}', '{{ $date->toDateString() }}', '{{ $slot }}')"
+                                @endif
                             ></div>
                         @endforeach
+
+                        {{-- Bloco Indisponível --}}
+                        @if ($endHour < 24)
+                            <div class="absolute left-1 right-1 rounded-xl bg-gray-100 border border-gray-300 flex flex-col items-center justify-start pt-3 z-[1] pointer-events-none"
+                                 style="top: {{ $unavailableTopPx }}px; height: {{ $unavailableHeightPx - 4 }}px;">
+                                <p class="text-xs font-bold text-gray-400 tabular-nums">
+                                    {{ sprintf('%02d:00', $endHour) }} – 00:00
+                                </p>
+                                <p class="text-xs text-gray-400 font-medium mt-0.5">Indisponível</p>
+                            </div>
+                        @endif
 
                         {{-- Cards de agendamento --}}
                         @foreach ($profAppointments as $apt)
                             @php $cfg = $apt->statusConfig(); @endphp
                             <div
                                 data-apt-id="{{ $apt->id }}"
-                                class="absolute left-1 right-1 rounded-xl border px-2 py-1 cursor-pointer overflow-hidden
+                                class="absolute left-1 right-1 rounded-xl border px-2 py-1 cursor-pointer overflow-hidden z-10
                                        {{ $cfg['bg'] }} {{ $cfg['border'] }} hover:brightness-95 transition-all"
-                                style="top: {{ $apt->gridTop($startHour) }}px; height: {{ max($apt->gridHeight() - 4, 28) }}px;"
+                                style="top: {{ $apt->gridTop($startHour) }}px; height: {{ max($apt->gridHeight() - 4, 24) }}px;"
                                 @click.stop="openDetail({{ $apt->load('client')->toJson() }})"
                             >
                                 <p class="text-xs font-bold {{ $cfg['text'] }} leading-tight">
-                                    {{ $apt->start_time }} às {{ $apt->end_time }}
+                                    {{ substr($apt->start_time, 0, 5) }} às {{ substr($apt->end_time, 0, 5) }}
                                 </p>
                                 <p class="text-xs font-semibold {{ $cfg['text'] }} truncate leading-tight">
                                     {{ $apt->client->name }}

@@ -64,16 +64,16 @@ class Appointment extends Model
             ->diffInMinutes(\Carbon\Carbon::parse($this->end_time));
     }
 
-    // Posição em pixels na grade (cada 30min = 64px)
+    // Posição em pixels na grade (cada 30min = 40px)
     public function gridTop(int $startHour = 8): int
     {
         [$h, $m] = explode(':', $this->start_time);
         $minutesFromStart = (((int)$h - $startHour) * 60) + (int)$m;
-        return ($minutesFromStart / 30) * 64;
+        return ($minutesFromStart / 30) * 48;
     }
 
     public function gridHeight(): int
     {
-        return ($this->durationMinutes() / 30) * 64;
+        return ($this->durationMinutes() / 30) * 48;
     }
 }

@@ -41,16 +41,16 @@ class AppointmentController extends Controller
         $startHour = $tenant->agenda_start_hour ?? 8;
         $endHour   = $tenant->agenda_end_hour   ?? 22;
 
-        // Gera slots de 30 em 30 minutos
+        // Gera slots de 30 em 30 minutos (do horário de início até meia-noite)
         $slots = [];
-        for ($h = $startHour; $h < $endHour; $h++) {
+        for ($h = $startHour; $h < 24; $h++) {
             $slots[] = sprintf('%02d:00', $h);
             $slots[] = sprintf('%02d:30', $h);
         }
 
         return view('app.agenda.index', compact(
             'date', 'professionals', 'appointments',
-            'clients', 'services', 'slots', 'startHour'
+            'clients', 'services', 'slots', 'startHour', 'endHour'
         ));
     }
 
