@@ -194,9 +194,15 @@
                                 style="top:{{ $apt->gridTop($startHour) }}px; height:{{ max($apt->gridHeight() - 4, 24) }}px; left:calc({{ $lPct }}% + 2px); width:calc({{ $wPct }}% - 4px); z-index:{{ $zIdx }};"
                                 @click.stop="openDetail({{ $apt->load(['client', 'service'])->toJson() }})"
                             >
-                                <p class="text-xs font-bold {{ $cfg['text'] }} leading-tight">
-                                    {{ substr($apt->start_time, 0, 5) }} às {{ substr($apt->end_time, 0, 5) }}
-                                </p>
+                                <div class="flex items-start justify-between gap-1">
+                                    <p class="text-xs font-bold {{ $cfg['text'] }} leading-tight">
+                                        {{ substr($apt->start_time, 0, 5) }} às {{ substr($apt->end_time, 0, 5) }}
+                                    </p>
+                                    <span data-status-label
+                                          class="text-[10px] font-semibold {{ $cfg['text'] }} opacity-80 leading-tight shrink-0">
+                                        {{ $cfg['label'] }}
+                                    </span>
+                                </div>
                                 <p class="text-xs font-semibold {{ $cfg['text'] }} truncate leading-tight">
                                     {{ $apt->client->name }}
                                 </p>
@@ -733,10 +739,13 @@ function agenda() {
                 Object.values(borderMap).forEach(c => card.classList.remove(c));
                 card.classList.add(bgMap[status] ?? 'bg-gray-100', borderMap[status] ?? 'border-gray-300');
 
-                card.querySelectorAll('p').forEach(p => {
-                    Object.values(textMap).forEach(c => p.classList.remove(c));
-                    if (textMap[status]) p.classList.add(textMap[status]);
+                const labelMap = { scheduled:'Agendado', confirmed:'Confirmado', completed:'Finalizado', cancelled:'Cancelado' };
+                card.querySelectorAll('p, span[data-status-label]').forEach(el => {
+                    Object.values(textMap).forEach(c => el.classList.remove(c));
+                    if (textMap[status]) el.classList.add(textMap[status]);
                 });
+                const labelEl = card.querySelector('[data-status-label]');
+                if (labelEl) labelEl.textContent = labelMap[status] ?? status;
             }
         },
 
