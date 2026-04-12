@@ -96,10 +96,16 @@ class OrderController extends Controller
     /** JSON: listas de profissionais, serviços e produtos (para o modal) */
     public function formData()
     {
+        $tenant = auth()->user()->tenant;
+
         return response()->json([
             'professionals' => Professional::orderBy('name')->get(['id', 'name']),
             'services'      => Service::where('active', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct']),
             'products'      => Product::where('active', true)->where('for_sale', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct']),
+            'fees'          => [
+                'credit_card' => (float) ($tenant->credit_card_fee ?? 0),
+                'debit_card'  => (float) ($tenant->debit_card_fee ?? 0),
+            ],
         ]);
     }
 
@@ -144,10 +150,19 @@ class OrderController extends Controller
     public function addPayment(Request $request, Order $order)
     {
         $data = $request->validate([
-            'method' => ['required', 'in:pix,credit_card,debit_card,cash,credit,debt'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'notes'  => ['nullable', 'string'],
+            'method'     => ['required', 'in:pix,credit_card,debit_card,cash,credit,debt'],
+            'amount'     => ['required', 'numeric', 'min:0.01'],
+            'fee_pct'    => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'fee_amount' => ['nullable', 'numeric', 'min:0'],
+            'notes'      => ['nullable', 'string'],
         ]);
+
+        // Garante que fee_pct e fee_amount batem (frontend envia os dois, mas recalcula para segurança)
+        $feePct          = (float) ($data['fee_pct'] ?? 0);
+        $data['fee_pct'] = $feePct;
+        $data['fee_amount'] = $feePct > 0
+            ? round((float) $data['amount'] - (float) $data['amount'] / (1 + $feePct / 100), 2)
+            : 0;
 
         $order->payments()->create($data);
 
@@ -210,13 +225,14 @@ class OrderController extends Controller
 
         $payments  = $order->payments;
         $client    = $order->client;
-        $sumDebt   = (float) $payments->where('method', 'debt')->sum('amount');
-        $sumCredit = (float) $payments->where('method', 'credit')->sum('amount');
-        $totalPaid = (float) $payments->sum('amount');
+        // Usa valor efetivo (sem taxa da maquininha) para todos os cálculos de saldo
+        $sumDebt   = (float) $payments->where('method', 'debt')->sum(fn($p) => $p->effectiveAmount());
+        $sumCredit = (float) $payments->where('method', 'credit')->sum(fn($p) => $p->effectiveAmount());
+        $totalPaid = (float) $payments->sum(fn($p) => $p->effectiveAmount());
         $total     = (float) $order->total;
 
         // Efeito líquido no saldo do cliente:
-        // debt e credit cada um decrementaram balance pelo seu valor;
+        // debt e credit cada um decrementaram balance pelo seu valor efetivo;
         // outros métodos: se totalPaid > total, o excesso foi adicionado como crédito.
         // Reverter = sum_debt + sum_credit - max(0, totalPaid - total)
         $excess    = max(0.0, round($totalPaid - $total, 2));
@@ -250,9 +266,9 @@ class OrderController extends Controller
             return;
         }
 
-        // Troco/excesso vira crédito
+        // Troco/excesso (excluindo taxa da maquininha) vira crédito
         $order->load('payments', 'items');
-        $balance = $order->balance();
+        $balance = $order->balance(); // já usa effectiveAmount()
         if ($balance > 0) {
             $client->increment('balance', $balance);
         }

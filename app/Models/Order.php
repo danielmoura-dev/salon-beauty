@@ -49,7 +49,7 @@ class Order extends Model
 
     public function totalPaid(): float
     {
-        return (float) $this->payments->sum('amount');
+        return (float) $this->payments->sum(fn($p) => $p->effectiveAmount());
     }
 
     public function balance(): float

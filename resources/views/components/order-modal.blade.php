@@ -389,6 +389,12 @@
                             <span class="text-red-500">Cobrança de dívida</span>
                             <span class="font-medium text-red-500" x-text="fmt(debtBeingCharged)"></span>
                         </div>
+                        <template x-if="totalFeeEntering() > 0">
+                            <div class="flex items-center justify-between">
+                                <span class="text-orange-500 text-xs">Taxa da maquininha</span>
+                                <span class="font-medium text-orange-500 text-xs" x-text="'+ ' + fmt(totalFeeEntering())"></span>
+                            </div>
+                        </template>
                         <div class="flex items-center justify-between border-t border-gray-200 pt-1.5">
                             <span class="text-gray-700 font-semibold">Total</span>
                             <span class="font-bold text-gray-900" x-text="fmt(sessionTotal())"></span>
@@ -433,12 +439,16 @@
                             <div x-show="!entry.locked" class="grid grid-cols-3 gap-1.5">
                                 <template x-for="[val, label] in Object.entries(paymentMethods)" :key="val">
                                     <button type="button"
-                                            @click="entry.method = val"
+                                            @click="selectMethod(entry, val)"
                                             :class="entry.method === val
                                                 ? 'border-primary-500 bg-primary-50 text-primary-700'
                                                 : 'border-gray-200 text-gray-500 hover:border-gray-300'"
-                                            class="rounded-xl border-2 py-1.5 text-center text-xs font-medium transition-colors"
-                                            x-text="label"></button>
+                                            class="rounded-xl border-2 py-1.5 text-center text-xs font-medium transition-colors">
+                                        <span x-text="label"></span>
+                                        <template x-if="feeForMethod(val) > 0">
+                                            <span class="block text-[10px] opacity-70" x-text="'+' + feeForMethod(val) + '%'"></span>
+                                        </template>
+                                    </button>
                                 </template>
                             </div>
 
@@ -459,7 +469,7 @@
 
                     {{-- Botão adicionar 2ª forma — só aparece se houver menos de 2 e nenhuma travada (crédito) --}}
                     <button x-show="paymentEntries.length < 2 && !paymentEntries.some(e => e.locked)"
-                            @click="paymentEntries.push({ method: 'cash', amount: 0, notes: '', locked: false })"
+                            @click="paymentEntries.push({ method: 'cash', amount: 0, baseAmount: 0, feePct: 0, feeAmount: 0, notes: '', locked: false })"
                             class="w-full rounded-xl border border-dashed border-gray-300 py-2 text-sm text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors">
                         + Adicionar 2ª forma de pagamento
                     </button>
@@ -574,7 +584,7 @@ function orderModal() {
         clientCredit:      0,
         debtBeingCharged:  0,
 
-        formData: { services: [], products: [], professionals: [] },
+        formData: { services: [], products: [], professionals: [], fees: { credit_card: 0, debit_card: 0 } },
 
         itemForm: {
             type: 'service', description: '', qty: 1, unit_price: 0,
@@ -664,6 +674,27 @@ function orderModal() {
             }
         },
 
+        feeForMethod(method) {
+            return parseFloat(this.formData.fees?.[method] ?? 0);
+        },
+
+        amountWithFee(base, method) {
+            const fee = this.feeForMethod(method);
+            if (fee <= 0) return base;
+            return parseFloat((base * (1 + fee / 100)).toFixed(2));
+        },
+
+        feeAmountFor(base, method) {
+            return parseFloat((this.amountWithFee(base, method) - base).toFixed(2));
+        },
+
+        selectMethod(entry, method) {
+            entry.method    = method;
+            entry.amount    = this.amountWithFee(entry.baseAmount, method);
+            entry.feePct    = this.feeForMethod(method);
+            entry.feeAmount = this.feeAmountFor(entry.baseAmount, method);
+        },
+
         startPaymentForm(includeDebt, useCredit) {
             this.paymentError     = '';
             this.paymentEntries   = [];
@@ -679,13 +710,21 @@ function orderModal() {
 
             if (useCredit && this.clientCredit > 0) {
                 const creditAmt = parseFloat(Math.min(this.clientCredit, totalDue).toFixed(2));
-                const secondAmt = parseFloat(Math.max(totalDue - creditAmt, 0).toFixed(2));
+                const secondBase = parseFloat(Math.max(totalDue - creditAmt, 0).toFixed(2));
                 this.paymentEntries = [
-                    { method: 'credit',   amount: creditAmt, notes: '', locked: true },
-                    { method: lastMethod, amount: secondAmt, notes: '', locked: false },
+                    { method: 'credit',   amount: creditAmt,                            baseAmount: creditAmt,  feePct: 0, feeAmount: 0, notes: '', locked: true },
+                    { method: lastMethod, amount: this.amountWithFee(secondBase, lastMethod), baseAmount: secondBase, feePct: this.feeForMethod(lastMethod), feeAmount: this.feeAmountFor(secondBase, lastMethod), notes: '', locked: false },
                 ];
             } else {
-                this.paymentEntries = [{ method: lastMethod, amount: totalDue, notes: '', locked: false }];
+                this.paymentEntries = [{
+                    method: lastMethod,
+                    amount: this.amountWithFee(totalDue, lastMethod),
+                    baseAmount: totalDue,
+                    feePct:     this.feeForMethod(lastMethod),
+                    feeAmount:  this.feeAmountFor(totalDue, lastMethod),
+                    notes: '',
+                    locked: false,
+                }];
             }
             this.view = 'addPayment';
         },
@@ -736,10 +775,17 @@ function orderModal() {
             this.saving = true; this.paymentError = '';
             try {
                 for (const entry of entries) {
+                    const payload = {
+                        method:     entry.method,
+                        amount:     entry.amount,
+                        fee_pct:    entry.feePct    ?? 0,
+                        fee_amount: entry.feeAmount ?? 0,
+                        notes:      entry.notes     ?? '',
+                    };
                     const res = await fetch(`/orders/${this.order.id}/payments`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
-                        body: JSON.stringify(entry),
+                        body: JSON.stringify(payload),
                     });
                     if (!res.ok) { this.paymentError = 'Erro ao registrar pagamento.'; return; }
                     this.order = await res.json();
@@ -821,11 +867,22 @@ function orderModal() {
         },
 
         totalPaid() {
-            return (this.order?.payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+            // Usa valor efetivo (sem taxa) igual ao backend
+            return (this.order?.payments ?? []).reduce((s, p) => s + Number(p.amount) - Number(p.fee_amount ?? 0), 0);
         },
 
         totalEntering() {
+            // Valor bruto que o cliente vai pagar (inclui taxa)
             return this.paymentEntries.reduce((s, e) => s + Number(e.amount ?? 0), 0);
+        },
+
+        totalBaseEntering() {
+            // Valor efetivo sem taxa — o que vai quitar a comanda
+            return this.paymentEntries.reduce((s, e) => s + Number(e.baseAmount ?? e.amount ?? 0), 0);
+        },
+
+        totalFeeEntering() {
+            return parseFloat((this.totalEntering() - this.totalBaseEntering()).toFixed(2));
         },
 
         // Total exibido = comanda + dívida sendo cobrada
@@ -833,14 +890,13 @@ function orderModal() {
             return Number(this.order?.total ?? 0) + this.debtBeingCharged;
         },
 
-        // Positivo = troco, negativo = falta
-        // (desconta o que já foi pago antes desta sessão)
+        // Positivo = troco, negativo = falta (baseado no valor efetivo, sem taxa)
         sessionChange() {
-            return this.totalEntering() - (this.sessionTotal() - this.totalPaid());
+            return this.totalBaseEntering() - (this.sessionTotal() - this.totalPaid());
         },
 
         remainingAfterEntry() {
-            return Number(this.order?.total ?? 0) - this.totalPaid() - this.totalEntering();
+            return Number(this.order?.total ?? 0) - this.totalPaid() - this.totalBaseEntering();
         },
 
         balance() {
