@@ -28,7 +28,7 @@
         </div>
 
         <div class="flex gap-2">
-            <button @click="showCategory = true"
+            <button @click="openCategory()"
                 class="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
                 + Categoria
             </button>
@@ -119,153 +119,185 @@
     </div>
 
     {{-- Modal Despesa --}}
-    <div x-show="showForm" x-cloak
-         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-         style="display:none">
-        <div class="absolute inset-0 bg-black/40" @click="showForm = false"></div>
-        <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-             @click.stop
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-4"
-             x-transition:enter-end="opacity-100 translate-y-0">
+    <x-modal name="expense" title="Despesa">
+        <form :action="editing ? `/expenses/${editing.id}` : '{{ route('expenses.store') }}'"
+              method="POST" class="space-y-4"
+              x-data="{ submitting: false }" @submit="submitting = true">
+            @csrf
+            <template x-if="editing"><input type="hidden" name="_method" value="PUT"></template>
 
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-gray-900" x-text="editing ? 'Editar Despesa' : 'Nova Despesa'"></h2>
-                <button @click="showForm = false" class="text-gray-400 hover:text-gray-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            <x-form-field label="Descrição *">
+                <input type="text" name="description" :value="editing?.description" required
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </x-form-field>
+
+            <div class="grid grid-cols-2 gap-3">
+                <x-form-field label="Valor (R$) *">
+                    <input type="number" name="amount" :value="editing?.amount" step="0.01" min="0.01" required
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </x-form-field>
+                <x-form-field label="Vencimento *">
+                    <input type="date" name="due_date" :value="editing?.due_date?.substring(0,10)" required
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </x-form-field>
             </div>
 
-            <form :action="editing ? `/expenses/${editing.id}` : '{{ route('expenses.store') }}'"
-                  method="POST" class="space-y-4"
-                  x-data="{ submitting: false }" @submit="submitting = true">
-                @csrf
-                <template x-if="editing"><input type="hidden" name="_method" value="PUT"></template>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
-                    <input type="text" name="description" :value="editing?.description" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
-                        <input type="number" name="amount" :value="editing?.amount" step="0.01" min="0.01" required
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Vencimento *</label>
-                        <input type="date" name="due_date"
-                               :value="editing?.due_date?.substring(0,10)"
-                               required
-                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                    <select name="category_id"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Sem categoria</option>
-                        @foreach ($categories as $cat)
-                            <option value="{{ $cat->id }}" :selected="editing?.category_id === '{{ $cat->id }}'">
-                                {{ $cat->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div x-show="!editing">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
-                    <select name="payment_type" x-model="paymentType"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                        <option value="one_time">À vista</option>
-                        <option value="installment">Parcelado</option>
-                        <option value="recurring">Recorrente</option>
-                    </select>
-                </div>
-
-                <div x-show="paymentType === 'installment' && !editing">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Número de parcelas</label>
-                    <input type="number" name="installments" min="2" max="60" value="2"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                </div>
-
-                <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
-                    <span class="text-sm font-medium text-gray-700">Já foi paga</span>
-                    <input type="checkbox" name="is_paid" value="1"
-                           :checked="editing?.is_paid"
-                           class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
-                </label>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                    <textarea name="notes" rows="2"
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
-                        x-text="editing?.notes"></textarea>
-                </div>
-
-                <div class="flex gap-2 pt-1">
-                    <button type="button" @click="showForm = false"
-                        class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        Cancelar
-                    </button>
-                    <button type="submit" :disabled="submitting"
-                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
-                        <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    {{-- Modal Categoria --}}
-    <div x-show="showCategory" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="display:none">
-        <div class="absolute inset-0 bg-black/40" @click="showCategory = false"></div>
-        <div class="relative w-full max-w-sm rounded-2xl bg-white shadow-xl p-6 space-y-4" @click.stop>
-            <h2 class="text-lg font-semibold text-gray-900">Nova Categoria</h2>
-            <form action="{{ route('categories.store') }}" method="POST" class="space-y-4">
-                @csrf
-                <input type="hidden" name="type" value="expense">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                    <input type="text" name="name" required autofocus
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                </div>
+            <x-form-field label="Categoria">
                 <div class="flex gap-2">
-                    <button type="button" @click="showCategory = false"
-                        class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        Cancelar
-                    </button>
-                    <button type="submit"
-                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
-                        Criar
+                    <select name="category_id" x-model="selectedCategoryId"
+                        class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Sem categoria</option>
+                        <template x-for="cat in categories" :key="cat.id">
+                            <option :value="cat.id" x-text="cat.name"></option>
+                        </template>
+                    </select>
+                    <button type="button" @click="openCategory()"
+                        class="shrink-0 rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+                        + Nova
                     </button>
                 </div>
-            </form>
+            </x-form-field>
+
+            <x-form-field label="Forma de pagamento" x-show="!editing">
+                <select name="payment_type" x-model="paymentType"
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <option value="one_time">À vista</option>
+                    <option value="installment">Parcelado</option>
+                    <option value="recurring">Recorrente</option>
+                </select>
+            </x-form-field>
+
+            <x-form-field label="Número de parcelas" x-show="paymentType === 'installment' && !editing">
+                <input type="number" name="installments" min="2" max="60" value="2"
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </x-form-field>
+
+            <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+                <span class="text-sm font-medium text-gray-700">Já foi paga</span>
+                <input type="checkbox" name="is_paid" value="1"
+                       :checked="editing?.is_paid"
+                       class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+            </label>
+
+            <x-form-field label="Observações">
+                <textarea name="notes" rows="2"
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    x-text="editing?.notes"></textarea>
+            </x-form-field>
+
+            <div class="flex gap-2 pt-2">
+                <button type="button" @click="$dispatch('close-modal-expense')"
+                    class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button type="submit" :disabled="submitting"
+                    class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                    <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="submitting ? 'Salvando…' : 'Salvar'"></span>
+                </button>
+            </div>
+        </form>
+    </x-modal>
+
+    {{-- Modal Categorias --}}
+    <x-modal name="expense-category" title="Categorias de Despesa">
+        <div class="space-y-5">
+
+            {{-- Lista de categorias existentes --}}
+            <div x-show="categories.length > 0">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Categorias existentes</p>
+                <div class="rounded-xl border border-gray-100 divide-y divide-gray-50 max-h-44 overflow-y-auto">
+                    <template x-for="cat in categories" :key="cat.id">
+                        <div class="flex items-center px-3 py-2.5">
+                            <span class="text-sm font-medium text-gray-700" x-text="cat.name"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Adicionar nova categoria --}}
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Nova categoria</p>
+                <div class="space-y-3">
+                    <input type="text" x-model="categoryFormName" placeholder="Nome da categoria"
+                        @keydown.enter.prevent="saveCategoryForm()"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <p x-show="categoryFormError" x-text="categoryFormError" class="text-sm text-red-500"></p>
+                    <div class="flex gap-2">
+                        <button type="button" @click="$dispatch('close-modal-expense-category')"
+                            class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Fechar
+                        </button>
+                        <button type="button" @click="saveCategoryForm()" :disabled="categoryFormSaving"
+                            class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                            <svg x-show="categoryFormSaving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <span x-text="categoryFormSaving ? 'Salvando…' : 'Adicionar'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+    </x-modal>
 
 </div>
 
 <script>
 function expensesPage() {
     return {
-        showForm: false,
-        showCategory: false,
-        editing: null,
-        paymentType: 'one_time',
+        editing:            null,
+        paymentType:        'one_time',
+        categories:         @json($categories),
+        selectedCategoryId: '',
+        categoryFormName:   '',
+        categoryFormSaving: false,
+        categoryFormError:  '',
+
         openCreate() {
-            this.editing = null;
-            this.paymentType = 'one_time';
-            this.showForm = true;
+            this.editing            = null;
+            this.paymentType        = 'one_time';
+            this.selectedCategoryId = '';
+            this.$dispatch('open-modal-expense');
         },
+
         openEdit(expense) {
-            this.editing = expense;
+            this.editing     = expense;
             this.paymentType = expense.payment_type;
-            this.showForm = true;
+            this.$nextTick(() => { this.selectedCategoryId = expense.category_id || ''; });
+            this.$dispatch('open-modal-expense');
+        },
+
+        openCategory() {
+            this.categoryFormName  = '';
+            this.categoryFormError = '';
+            this.$dispatch('open-modal-expense-category');
+        },
+
+        async saveCategoryForm() {
+            if (!this.categoryFormName.trim()) { this.categoryFormError = 'Informe o nome.'; return; }
+            this.categoryFormSaving = true; this.categoryFormError = '';
+            try {
+                const res = await fetch('{{ route('categories.store') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    },
+                    body: JSON.stringify({ name: this.categoryFormName, type: 'expense' }),
+                });
+                if (res.ok) {
+                    const cat = await res.json();
+                    this.categories.push({ id: cat.id, name: cat.name, type: cat.type });
+                    this.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                    this.selectedCategoryId = cat.id;
+                    this.categoryFormName   = '';
+                    this.$dispatch('close-modal-expense-category');
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    this.categoryFormError = err.message || 'Erro ao salvar.';
+                }
+            } catch { this.categoryFormError = 'Erro de conexão.'; }
+            finally  { this.categoryFormSaving = false; }
         },
     }
 }
