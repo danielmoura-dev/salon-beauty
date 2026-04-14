@@ -153,7 +153,7 @@
                                         class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60">
                                     Manter Aberta
                                 </button>
-                                <button @click="cancelOrder()" :disabled="saving"
+                                <button @click="showCancelConfirm = true" :disabled="saving"
                                         class="flex-1 rounded-xl border border-red-200 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60">
                                     Cancelar Comanda
                                 </button>
@@ -205,25 +205,33 @@
                     {{-- Quick fill serviço --}}
                     <div x-show="itemForm.type === 'service'">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Preencher a partir de:</label>
-                        <select @change="fillFromService($event.target.value); $event.target.value = ''"
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                            <option value="">Selecione um serviço…</option>
-                            <template x-for="svc in formData.services" :key="svc.id">
-                                <option :value="svc.id" x-text="svc.name + ' — R$ ' + Number(svc.price).toFixed(2).replace('.',',')"></option>
-                            </template>
-                        </select>
+                        <button type="button" @click="openPickService()"
+                            class="w-full flex items-center justify-between gap-2 rounded-xl border-2 px-4 py-2.5 text-sm text-left transition-colors"
+                            :class="pickerSelectedServices.length ? 'border-primary-400 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'">
+                            <span class="truncate"
+                                  x-text="pickerSelectedServices.length
+                                      ? pickerSelectedServices.map(s => s.name).join(', ')
+                                      : 'Selecionar serviço(s)…'"></span>
+                            <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                            </svg>
+                        </button>
                     </div>
 
                     {{-- Quick fill produto --}}
                     <div x-show="itemForm.type === 'product'">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Preencher a partir de:</label>
-                        <select @change="fillFromProduct($event.target.value); $event.target.value = ''"
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                            <option value="">Selecione um produto…</option>
-                            <template x-for="prod in formData.products" :key="prod.id">
-                                <option :value="prod.id" x-text="prod.name + ' — R$ ' + Number(prod.price).toFixed(2).replace('.',',')"></option>
-                            </template>
-                        </select>
+                        <button type="button" @click="openPickProduct()"
+                            class="w-full flex items-center justify-between gap-2 rounded-xl border-2 px-4 py-2.5 text-sm text-left transition-colors"
+                            :class="pickerSelectedProducts.length ? 'border-primary-400 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'">
+                            <span class="truncate"
+                                  x-text="pickerSelectedProducts.length
+                                      ? pickerSelectedProducts.map(p => p.name).join(', ')
+                                      : 'Selecionar produto(s)…'"></span>
+                            <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                            </svg>
+                        </button>
                     </div>
 
                     {{-- Descrição --}}
@@ -576,6 +584,160 @@
             </div>
 
         </div>{{-- fim conteúdo --}}
+
+        {{-- ===== CONFIRMAÇÃO: CANCELAR COMANDA ===== --}}
+        <div x-show="showCancelConfirm" x-cloak
+             class="absolute inset-0 bg-black/40 flex items-center justify-center rounded-2xl p-6"
+             style="z-index:20; display:none"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+            <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden"
+                 @click.stop
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100">
+                <div class="px-6 pt-6 pb-5 text-center space-y-3">
+                    <div class="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-900 text-base">Cancelar comanda?</p>
+                        <p class="text-sm text-gray-500 mt-1">Esta ação não pode ser desfeita. A comanda será marcada como cancelada.</p>
+                    </div>
+                </div>
+                <div class="flex border-t border-gray-100">
+                    <button type="button" @click="showCancelConfirm = false"
+                        :disabled="saving"
+                        class="flex-1 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors border-r border-gray-100">
+                        Manter comanda
+                    </button>
+                    <button type="button" @click="confirmCancelOrder()"
+                        :disabled="saving"
+                        class="flex-1 py-3.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors">
+                        <span x-show="!saving">Sim, cancelar</span>
+                        <span x-show="saving">Cancelando…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- ===== PICKER: SERVIÇOS ===== --}}
+        <div x-show="showPickService" x-cloak
+             class="absolute inset-0 bg-white flex flex-col rounded-2xl"
+             style="z-index:10; display:none"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 translate-x-4"
+             x-transition:enter-end="opacity-100 translate-x-0">
+
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+                <button type="button" @click="showPickService = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                </button>
+                <h2 class="font-semibold text-gray-900">Selecionar Serviços</h2>
+            </div>
+
+            <div class="px-4 py-3 border-b border-gray-100 shrink-0">
+                <input type="text" x-model="pickerServiceSearch"
+                       placeholder="Buscar serviço…"
+                       class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <div class="overflow-y-auto flex-1 px-3 py-2">
+                <template x-for="svc in filteredPickerServices()" :key="svc.id">
+                    <button type="button" @click="togglePickerService(svc)"
+                        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-left"
+                        :class="isPickerServiceSelected(svc.id) ? 'bg-primary-50' : 'hover:bg-gray-50'">
+                        <div class="shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                             :class="isPickerServiceSelected(svc.id) ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
+                            <svg x-show="isPickerServiceSelected(svc.id)" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm"
+                               :class="isPickerServiceSelected(svc.id) ? 'text-primary-800' : 'text-gray-900'"
+                               x-text="svc.name"></p>
+                            <p class="text-xs text-gray-400"
+                               x-text="(svc.duration_min ? svc.duration_min + 'min · ' : '') + 'R$ ' + Number(svc.price).toFixed(2).replace('.', ',')"></p>
+                        </div>
+                    </button>
+                </template>
+                <p x-show="filteredPickerServices().length === 0" class="text-center text-sm text-gray-400 py-8">Nenhum serviço encontrado.</p>
+            </div>
+
+            <div class="px-4 py-3 border-t border-gray-100 shrink-0">
+                <button type="button" @click="confirmPickerServices()"
+                    :disabled="pickerSelectedServices.length === 0 || saving"
+                    class="w-full rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40 transition-opacity">
+                    <span x-text="pickerSelectedServices.length > 0
+                        ? 'Confirmar (' + pickerSelectedServices.length + ')'
+                        : 'Selecione ao menos um serviço'"></span>
+                </button>
+            </div>
+        </div>
+
+        {{-- ===== PICKER: PRODUTOS ===== --}}
+        <div x-show="showPickProduct" x-cloak
+             class="absolute inset-0 bg-white flex flex-col rounded-2xl"
+             style="z-index:10; display:none"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 translate-x-4"
+             x-transition:enter-end="opacity-100 translate-x-0">
+
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">
+                <button type="button" @click="showPickProduct = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                    </svg>
+                </button>
+                <h2 class="font-semibold text-gray-900">Selecionar Produtos</h2>
+            </div>
+
+            <div class="px-4 py-3 border-b border-gray-100 shrink-0">
+                <input type="text" x-model="pickerProductSearch"
+                       placeholder="Buscar produto…"
+                       class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </div>
+
+            <div class="overflow-y-auto flex-1 px-3 py-2">
+                <template x-for="prod in filteredPickerProducts()" :key="prod.id">
+                    <button type="button" @click="togglePickerProduct(prod)"
+                        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-left"
+                        :class="isPickerProductSelected(prod.id) ? 'bg-primary-50' : 'hover:bg-gray-50'">
+                        <div class="shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                             :class="isPickerProductSelected(prod.id) ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
+                            <svg x-show="isPickerProductSelected(prod.id)" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm"
+                               :class="isPickerProductSelected(prod.id) ? 'text-primary-800' : 'text-gray-900'"
+                               x-text="prod.name"></p>
+                            <p class="text-xs text-gray-400"
+                               x-text="'R$ ' + Number(prod.price).toFixed(2).replace('.', ',')"></p>
+                        </div>
+                    </button>
+                </template>
+                <p x-show="filteredPickerProducts().length === 0" class="text-center text-sm text-gray-400 py-8">Nenhum produto encontrado.</p>
+            </div>
+
+            <div class="px-4 py-3 border-t border-gray-100 shrink-0">
+                <button type="button" @click="confirmPickerProducts()"
+                    :disabled="pickerSelectedProducts.length === 0 || saving"
+                    class="w-full rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40 transition-opacity">
+                    <span x-text="pickerSelectedProducts.length > 0
+                        ? 'Confirmar (' + pickerSelectedProducts.length + ')'
+                        : 'Selecione ao menos um produto'"></span>
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -606,6 +768,17 @@ function orderModal() {
             professional_id: '', commission_pct: 0, has_commission: true,
         },
 
+        // confirmação cancelamento
+        showCancelConfirm: false,
+
+        // pickers
+        showPickService:        false,
+        pickerServiceSearch:    '',
+        pickerSelectedServices: [],
+        showPickProduct:        false,
+        pickerProductSearch:    '',
+        pickerSelectedProducts: [],
+
         paymentMethods: {
             pix: 'Pix', credit_card: 'Cartão Crédito', debit_card: 'Cartão Débito',
             cash: 'Dinheiro', credit: 'Crédito', debt: 'Fiado',
@@ -625,7 +798,7 @@ function orderModal() {
             this.loading = false;
         },
 
-        close() { this.show = false; this.order = null; },
+        close() { this.show = false; this.order = null; this.showCancelConfirm = false; },
 
         async loadOrder(id) {
             const res  = await fetch(`/orders/${id}/data`, { headers: { Accept: 'application/json' } });
@@ -639,9 +812,11 @@ function orderModal() {
         },
 
         openAddItem() {
-            this.itemError = '';
-            this.itemForm  = { type: 'service', description: '', qty: 1, unit_price: 0, professional_id: '', commission_pct: 0, has_commission: true };
-            this.view      = 'addItem';
+            this.itemError              = '';
+            this.itemForm               = { type: 'service', description: '', qty: 1, unit_price: 0, professional_id: '', commission_pct: 0, has_commission: true };
+            this.pickerSelectedServices = [];
+            this.pickerSelectedProducts = [];
+            this.view                   = 'addItem';
         },
 
         handleCloseClick() {
@@ -871,19 +1046,113 @@ function orderModal() {
             this.saving = false;
         },
 
-        async cancelOrder() {
-            if (!confirm('Cancelar esta comanda?')) return;
+        async confirmCancelOrder() {
             this.saving = true;
             const res = await fetch(`/orders/${this.order.id}/cancel`, {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
             });
             if (res.ok) this.order = await res.json();
-            this.saving = false;
+            this.saving            = false;
+            this.showCancelConfirm = false;
         },
 
         isPaid() {
             return this.totalPaid() >= Number(this.order?.total ?? 0) && Number(this.order?.total ?? 0) > 0;
+        },
+
+        // ── Picker serviços ───────────────────────────────────────────────
+        filteredPickerServices() {
+            const q = this.pickerServiceSearch.trim().toLowerCase();
+            if (!q) return this.formData.services;
+            return this.formData.services.filter(s => s.name.toLowerCase().includes(q));
+        },
+        isPickerServiceSelected(id) {
+            return this.pickerSelectedServices.some(s => s.id === id);
+        },
+        togglePickerService(svc) {
+            const idx = this.pickerSelectedServices.findIndex(s => s.id === svc.id);
+            if (idx >= 0) this.pickerSelectedServices.splice(idx, 1);
+            else          this.pickerSelectedServices.push(svc);
+        },
+        openPickService() {
+            this.pickerServiceSearch = '';
+            this.showPickService     = true;
+        },
+        async confirmPickerServices() {
+            if (!this.pickerSelectedServices.length) return;
+            const [first, ...rest] = this.pickerSelectedServices;
+            // Preenche o form com o primeiro
+            this.itemForm.description    = first.name;
+            this.itemForm.unit_price     = parseFloat(first.price);
+            this.itemForm.commission_pct = parseFloat(first.commission_pct ?? 0);
+            this.itemForm.has_commission = parseFloat(first.commission_pct ?? 0) > 0;
+            // Adiciona os demais direto
+            if (rest.length) {
+                this.saving = true;
+                for (const svc of rest) {
+                    await fetch(`/orders/${this.order.id}/items`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                        body: JSON.stringify({
+                            type: 'service', description: svc.name, qty: 1,
+                            unit_price: parseFloat(svc.price),
+                            professional_id: this.itemForm.professional_id || null,
+                            commission_pct: parseFloat(svc.commission_pct ?? 0),
+                            has_commission: parseFloat(svc.commission_pct ?? 0) > 0,
+                        }),
+                    });
+                }
+                const res   = await fetch(`/orders/${this.order.id}/data`, { headers: { Accept: 'application/json' } });
+                this.order  = await res.json();
+                this.saving = false;
+            }
+            this.showPickService = false;
+        },
+
+        // ── Picker produtos ───────────────────────────────────────────────
+        filteredPickerProducts() {
+            const q = this.pickerProductSearch.trim().toLowerCase();
+            if (!q) return this.formData.products;
+            return this.formData.products.filter(p => p.name.toLowerCase().includes(q));
+        },
+        isPickerProductSelected(id) {
+            return this.pickerSelectedProducts.some(p => p.id === id);
+        },
+        togglePickerProduct(prod) {
+            const idx = this.pickerSelectedProducts.findIndex(p => p.id === prod.id);
+            if (idx >= 0) this.pickerSelectedProducts.splice(idx, 1);
+            else          this.pickerSelectedProducts.push(prod);
+        },
+        openPickProduct() {
+            this.pickerProductSearch = '';
+            this.showPickProduct     = true;
+        },
+        async confirmPickerProducts() {
+            if (!this.pickerSelectedProducts.length) return;
+            const [first, ...rest] = this.pickerSelectedProducts;
+            this.itemForm.description    = first.name;
+            this.itemForm.unit_price     = parseFloat(first.price);
+            this.itemForm.commission_pct = 0;
+            this.itemForm.has_commission = false;
+            if (rest.length) {
+                this.saving = true;
+                for (const prod of rest) {
+                    await fetch(`/orders/${this.order.id}/items`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                        body: JSON.stringify({
+                            type: 'product', description: prod.name, qty: 1,
+                            unit_price: parseFloat(prod.price),
+                            professional_id: null, commission_pct: 0, has_commission: false,
+                        }),
+                    });
+                }
+                const res   = await fetch(`/orders/${this.order.id}/data`, { headers: { Accept: 'application/json' } });
+                this.order  = await res.json();
+                this.saving = false;
+            }
+            this.showPickProduct = false;
         },
 
         fillFromService(id) {
