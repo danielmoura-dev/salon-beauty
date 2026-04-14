@@ -102,6 +102,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancelStripe'])->name('subscription.cancel');
 
     // Clientes
+    Route::get('/clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::get('/clients', [ClientController::class, 'index'])->name('clients');
     Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
     Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');

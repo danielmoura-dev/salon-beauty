@@ -24,6 +24,29 @@ class ClientController extends Controller
         return view('app.clients.index', compact('clients'));
     }
 
+    public function search(Request $request)
+    {
+        $q       = trim($request->input('q', ''));
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = 25;
+
+        $query = Client::select(['id', 'name', 'phone', 'balance'])->orderBy('name');
+
+        if ($q) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('phone', 'like', "%{$q}%");
+            });
+        }
+
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'data'     => $paginator->items(),
+            'has_more' => $paginator->hasMorePages(),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

@@ -4,17 +4,27 @@
 @section('content')
 <div class="space-y-6">
 
-    {{-- Cabeçalho + seletor de mês --}}
+    {{-- Cabeçalho + navegação de mês --}}
     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Relatórios</h1>
-            <p class="text-sm text-gray-400">{{ $month->translatedFormat('F \d\e Y') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">Relatórios</h1>
+
+        <div class="flex items-center gap-1 sm:mx-auto">
+            <a href="{{ route('reports', ['month' => $month->copy()->subMonth()->format('Y-m')]) }}"
+               class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                </svg>
+            </a>
+            <div class="text-center px-2">
+                <p class="text-sm font-semibold text-gray-800">{{ $month->translatedFormat('F Y') }}</p>
+            </div>
+            <a href="{{ route('reports', ['month' => $month->copy()->addMonth()->format('Y-m')]) }}"
+               class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+            </a>
         </div>
-        <form method="GET" class="sm:ml-auto flex items-center gap-2">
-            <input type="month" name="month" value="{{ $month->format('Y-m') }}"
-                   onchange="this.form.submit()"
-                   class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-        </form>
     </div>
 
     {{-- Visão geral --}}

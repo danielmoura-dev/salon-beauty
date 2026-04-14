@@ -6,65 +6,159 @@
 
     {{-- Cabeçalho --}}
     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Comandas</h1>
-            <p class="text-sm text-gray-400">{{ $date->translatedFormat('d \d\e F \d\e Y') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">Comandas</h1>
+
+        {{-- Navegação de data --}}
+        <div class="flex items-center gap-1 sm:mx-auto">
+            <a href="{{ route('orders', ['date' => $date->copy()->subDay()->toDateString(), 'status' => $status]) }}"
+               class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                </svg>
+            </a>
+            <div class="text-center px-2">
+                <p class="text-sm font-semibold text-gray-800">{{ $date->translatedFormat('d \d\e F') }}</p>
+                @if ($date->isToday())
+                    <p class="text-xs text-primary-500 font-medium leading-none">Hoje</p>
+                @else
+                    <p class="text-xs text-gray-400 leading-none">{{ $date->translatedFormat('l') }}</p>
+                @endif
+            </div>
+            <a href="{{ route('orders', ['date' => $date->copy()->addDay()->toDateString(), 'status' => $status]) }}"
+               class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+            </a>
         </div>
-        <button @click="showNew = true"
-            class="sm:ml-auto rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+
+        <button @click="openNew()"
+            class="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
             + Nova Comanda
         </button>
     </div>
 
-    {{-- Resumo financeiro --}}
-    <div class="grid grid-cols-3 gap-3">
+    {{-- Resumo --}}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">Total do dia</p>
-            <p class="text-xl font-bold text-gray-900">R$ {{ number_format($summary['total'], 2, ',', '.') }}</p>
+            <p class="text-xs text-gray-400 mb-1">Abertas</p>
+            <p class="text-2xl font-bold text-amber-500">{{ $summary['openCount'] }}</p>
         </div>
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">Serviços</p>
-            <p class="text-xl font-bold text-primary-600">R$ {{ number_format($summary['services'], 2, ',', '.') }}</p>
+            <p class="text-xs text-gray-400 mb-1">Fechadas</p>
+            <p class="text-2xl font-bold text-green-600">{{ $summary['closedCount'] }}</p>
         </div>
         <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">Produtos</p>
-            <p class="text-xl font-bold text-blue-600">R$ {{ number_format($summary['products'], 2, ',', '.') }}</p>
+            <p class="text-xs text-gray-400 mb-1">Valor esperado</p>
+            <p class="text-lg font-bold text-gray-500">R$ {{ number_format($summary['expectedTotal'], 2, ',', '.') }}</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-xs text-gray-400 mb-1">Valor atual</p>
+            <p class="text-lg font-bold text-gray-900">R$ {{ number_format($summary['actualTotal'], 2, ',', '.') }}</p>
         </div>
     </div>
 
-    {{-- Filtros --}}
-    <div class="flex items-center gap-2">
-        <form method="GET" class="flex gap-2 flex-wrap">
-            <input type="date" name="date" value="{{ $date->toDateString() }}"
-                onchange="this.form.submit()"
-                class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-
+    {{-- Filtros + tab Vendas do dia --}}
+    <div class="flex items-center gap-2 flex-wrap">
+        <form method="GET" class="contents">
+            <input type="hidden" name="date" value="{{ $date->toDateString() }}">
             @foreach (['open' => 'Abertas', 'closed' => 'Fechadas', 'all' => 'Todas'] as $val => $label)
-                <button type="submit" name="status" value="{{ $val }}"
+                <button type="submit" name="status" value="{{ $val }}" @click="showVendas = false"
                     class="rounded-xl px-4 py-2 text-sm font-medium transition-colors
-                           {{ $status === $val
+                           {{ $status === $val && !isset($forceVendas)
                                ? 'bg-primary-600 text-white'
                                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
                     {{ $label }}
                 </button>
             @endforeach
         </form>
+        <button @click="showVendas = !showVendas"
+                :class="showVendas ? 'bg-green-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'"
+                class="rounded-xl px-4 py-2 text-sm font-medium transition-colors">
+            Vendas do dia
+        </button>
+    </div>
+
+    {{-- PAINEL: Vendas do dia --}}
+    <div x-show="showVendas" x-cloak class="space-y-4">
+
+        {{-- Sub-tabs --}}
+        <div class="flex gap-2">
+            <button @click="vendasTab = 'item'"
+                    :class="vendasTab === 'item' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'"
+                    class="rounded-xl px-4 py-2 text-sm font-medium transition-colors">
+                Por item
+            </button>
+            <button @click="vendasTab = 'payment'"
+                    :class="vendasTab === 'payment' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'"
+                    class="rounded-xl px-4 py-2 text-sm font-medium transition-colors">
+                Por pagamento
+            </button>
+        </div>
+
+        {{-- Por item --}}
+        <div x-show="vendasTab === 'item'" class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 bg-gray-50">
+                <p class="font-semibold text-gray-800">Vendas por tipo</p>
+                <p class="text-xs text-gray-400">Somente comandas fechadas</p>
+            </div>
+            @php
+                $salesTotal = array_sum($summary['salesByType']);
+                $salesRows  = [
+                    'Serviços'  => $summary['salesByType']['services'],
+                    'Produtos'  => $summary['salesByType']['products'],
+                    'Outros'    => $summary['salesByType']['others'],
+                ];
+            @endphp
+            @foreach ($salesRows as $label => $value)
+                <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50 last:border-0">
+                    <span class="text-sm text-gray-700">{{ $label }}</span>
+                    <span class="font-semibold text-gray-900 text-sm">R$ {{ number_format($value, 2, ',', '.') }}</span>
+                </div>
+            @endforeach
+            <div class="flex items-center justify-between px-5 py-3.5 bg-gray-50 border-t border-gray-100">
+                <span class="font-semibold text-gray-700 text-sm">Total</span>
+                <span class="font-bold text-gray-900">R$ {{ number_format($salesTotal, 2, ',', '.') }}</span>
+            </div>
+        </div>
+
+        {{-- Por pagamento --}}
+        <div x-show="vendasTab === 'payment'" class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 bg-gray-50">
+                <p class="font-semibold text-gray-800">Receitas por forma de pagamento</p>
+                <p class="text-xs text-gray-400">Somente comandas fechadas</p>
+            </div>
+            @if (count($summary['salesByPayment']) > 0)
+                @foreach ($summary['salesByPayment'] as $method => $value)
+                    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50 last:border-0">
+                        <span class="text-sm text-gray-700">{{ \App\Models\Payment::$methodLabels[$method] ?? $method }}</span>
+                        <span class="font-semibold text-green-700 text-sm">R$ {{ number_format($value, 2, ',', '.') }}</span>
+                    </div>
+                @endforeach
+                <div class="flex items-center justify-between px-5 py-3.5 bg-gray-50 border-t border-gray-100">
+                    <span class="font-semibold text-gray-700 text-sm">Total recebido</span>
+                    <span class="font-bold text-gray-900">R$ {{ number_format(array_sum($summary['salesByPayment']), 2, ',', '.') }}</span>
+                </div>
+            @else
+                <div class="px-5 py-10 text-center text-sm text-gray-400">
+                    Nenhum pagamento registrado hoje.
+                </div>
+            @endif
+        </div>
     </div>
 
     {{-- Lista de comandas --}}
-    <div class="space-y-3">
+    <div x-show="!showVendas" class="space-y-3">
         @forelse ($orders as $order)
             <div @click="$dispatch('open-order-modal', { orderId: '{{ $order->id }}' })"
                class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 shadow-sm
                       px-4 py-3.5 hover:border-primary-200 transition-colors cursor-pointer">
 
-                {{-- Avatar cliente --}}
                 <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center
                             text-primary-500 font-bold shrink-0">
                     {{ strtoupper(substr($order->client->name, 0, 1)) }}
                 </div>
 
-                {{-- Info --}}
                 <div class="flex-1 min-w-0">
                     <p class="font-semibold text-gray-900">{{ $order->client->name }}</p>
                     <p class="text-sm text-gray-400">
@@ -73,7 +167,6 @@
                     </p>
                 </div>
 
-                {{-- Total + Status --}}
                 <div class="text-right shrink-0">
                     <p class="font-bold text-gray-900">
                         R$ {{ number_format($order->total, 2, ',', '.') }}
@@ -101,51 +194,115 @@
 
     {{-- Modal Nova Comanda --}}
     <div x-show="showNew" x-cloak
-         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-         style="display:none">
-        <div class="absolute inset-0 bg-black/40" @click="showNew = false"></div>
-        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl p-6 space-y-4"
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:100; display:none">
+        <div class="absolute inset-0 bg-black/40" @click="closeNew()"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl"
              @click.stop
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-y-4"
              x-transition:enter-end="opacity-100 translate-y-0">
 
-            <div class="flex items-center justify-between">
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-6 pt-7 pb-4 border-b border-gray-100">
                 <h2 class="text-lg font-semibold text-gray-900">Nova Comanda</h2>
-                <button @click="showNew = false" class="text-gray-400 hover:text-gray-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button @click="closeNew()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
 
-            <form action="{{ route('orders.store') }}" method="POST" class="space-y-4">
+            <form action="{{ route('orders.store') }}" method="POST" class="px-6 pt-4 pb-6 space-y-4">
                 @csrf
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
-                    <select name="client_id" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Selecione…</option>
-                        @foreach ($clients as $client)
-                            <option value="{{ $client->id }}">
-                                {{ $client->name }}
-                                @if ($client->balance < 0)
-                                    (deve R$ {{ number_format(abs($client->balance), 2, ',', '.') }})
-                                @elseif ($client->balance > 0)
-                                    (crédito R$ {{ number_format($client->balance, 2, ',', '.') }})
-                                @endif
-                            </option>
-                        @endforeach
-                    </select>
+                <input type="hidden" name="client_id" :value="selectedClientId">
+
+                {{-- ESTADO: cliente já selecionado --}}
+                <div x-show="selectedClient">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Cliente selecionado</p>
+                    <div class="flex items-center gap-3 rounded-xl bg-primary-50 border border-primary-200 px-3 py-2.5">
+                        <div class="h-9 w-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold text-sm shrink-0"
+                             x-text="selectedClient?.name?.charAt(0)?.toUpperCase()"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-gray-900 text-sm truncate" x-text="selectedClient?.name"></p>
+                            <p class="text-xs"
+                               :class="selectedClient?.balance < 0 ? 'text-red-500' : selectedClient?.balance > 0 ? 'text-green-600' : 'text-gray-400'"
+                               x-text="selectedClient?.balance < 0
+                                   ? 'Deve R$ ' + Math.abs(selectedClient.balance).toFixed(2).replace('.', ',')
+                                   : selectedClient?.balance > 0
+                                       ? 'Crédito R$ ' + Number(selectedClient.balance).toFixed(2).replace('.', ',')
+                                       : selectedClient?.phone || 'Sem telefone'"></p>
+                        </div>
+                        <button type="button"
+                            @click="selectedClient = null; selectedClientId = null; $nextTick(() => fetchClients(true))"
+                            class="text-xs text-primary-600 hover:text-primary-800 font-medium shrink-0 ml-1">
+                            Trocar
+                        </button>
+                    </div>
                 </div>
+
+                {{-- ESTADO: selecionando cliente --}}
+                <div x-show="!selectedClient" class="space-y-2">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Selecionar cliente *</p>
+                    <input type="text" x-model="clientSearch"
+                           @input="onSearchInput()"
+                           placeholder="Buscar por nome ou telefone…"
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+
+                    {{-- Caixa fixa com scroll interno --}}
+                    <div class="h-64 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50"
+                         @scroll="onListScroll($event)">
+                        <div class="px-1 py-1">
+                            <template x-for="client in clients" :key="client.id">
+                                <button type="button" @click="selectClient(client)"
+                                    class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-white hover:shadow-sm transition-all text-left">
+                                    <div class="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0"
+                                         x-text="client.name?.charAt(0)?.toUpperCase()"></div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium text-gray-900 text-sm truncate" x-text="client.name"></p>
+                                        <p class="text-xs"
+                                           :class="client.balance < 0 ? 'text-red-500' : client.balance > 0 ? 'text-green-600' : 'text-gray-400'"
+                                           x-text="client.balance < 0
+                                               ? 'Deve R$ ' + Math.abs(client.balance).toFixed(2).replace('.', ',')
+                                               : client.balance > 0
+                                                   ? 'Crédito R$ ' + Number(client.balance).toFixed(2).replace('.', ',')
+                                                   : client.phone || 'Sem telefone'"></p>
+                                    </div>
+                                    <svg class="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                                    </svg>
+                                </button>
+                            </template>
+
+                            {{-- Spinner ao carregar mais --}}
+                            <div x-show="clientLoading" class="flex justify-center py-4">
+                                <svg class="animate-spin h-5 w-5 text-primary-400" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                                </svg>
+                            </div>
+
+                            <p x-show="!clientLoading && clients.length === 0"
+                               class="text-center text-sm text-gray-400 py-8">
+                                Nenhum cliente encontrado.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Observações --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                     <textarea name="notes" rows="2"
                         class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
                 </div>
-                <div class="flex gap-2 pt-1">
-                    <button type="button" @click="showNew = false"
+
+                {{-- Botões --}}
+                <div class="flex gap-2">
+                    <button type="button" @click="closeNew()"
                         class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         Cancelar
                     </button>
-                    <button type="submit"
-                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+                    <button type="submit" :disabled="!selectedClientId"
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed">
                         Abrir Comanda
                     </button>
                 </div>
@@ -157,7 +314,81 @@
 
 <script>
 function ordersPage() {
-    return { showNew: false }
+    return {
+        showNew:          false,
+        showVendas:       false,
+        vendasTab:        'item',
+
+        // picker de cliente
+        clientSearch:     '',
+        clientSearchTimer: null,
+        clients:          [],
+        clientPage:       1,
+        clientHasMore:    true,
+        clientLoading:    false,
+        selectedClient:   null,
+        selectedClientId: null,
+
+        async fetchClients(reset = false) {
+            if (this.clientLoading) return;
+            if (!reset && !this.clientHasMore) return;
+
+            if (reset) {
+                this.clients      = [];
+                this.clientPage   = 1;
+                this.clientHasMore = true;
+            }
+
+            this.clientLoading = true;
+            try {
+                const params = new URLSearchParams({ q: this.clientSearch, page: this.clientPage });
+                const res    = await fetch(`/clients/search?${params}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const json = await res.json();
+                this.clients.push(...json.data);
+                this.clientHasMore = json.has_more;
+                this.clientPage++;
+            } catch (_) {
+                // silencioso
+            } finally {
+                this.clientLoading = false;
+            }
+        },
+
+        onSearchInput() {
+            clearTimeout(this.clientSearchTimer);
+            this.clientSearchTimer = setTimeout(() => this.fetchClients(true), 350);
+        },
+
+        onListScroll(event) {
+            const el = event.target;
+            if (!this.clientHasMore || this.clientLoading) return;
+            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+                this.fetchClients(false);
+            }
+        },
+
+        openNew() {
+            this.showNew = true;
+            this.$nextTick(() => this.fetchClients(true));
+        },
+
+        selectClient(client) {
+            this.selectedClient   = client;
+            this.selectedClientId = client.id;
+        },
+
+        closeNew() {
+            this.showNew          = false;
+            this.selectedClient   = null;
+            this.selectedClientId = null;
+            this.clientSearch     = '';
+            this.clients          = [];
+            this.clientPage       = 1;
+            this.clientHasMore    = true;
+        },
+    }
 }
 </script>
 

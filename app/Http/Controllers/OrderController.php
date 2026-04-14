@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -33,29 +32,47 @@ class OrderController extends Controller
         $orders = $query->get();
 
         // Resumo financeiro do dia
-        $todayOrders  = Order::with(['items', 'payments'])
+        $allTodayOrders = Order::with(['items', 'payments'])
             ->whereDate('created_at', $date)
-            ->where('status', 'closed')
+            ->whereIn('status', ['open', 'closed'])
             ->get();
 
-        $summary = [
-            'total'    => $todayOrders->sum(fn($o) => $o->total),
-            'services' => $todayOrders->sum(fn($o) =>
-                $o->items->where('type', 'service')->sum(fn($i) => $i->subtotal())
-            ),
-            'products' => $todayOrders->sum(fn($o) =>
-                $o->items->where('type', 'product')->sum(fn($i) => $i->subtotal())
-            ),
+        $closedToday = $allTodayOrders->where('status', 'closed');
+        $openToday   = $allTodayOrders->where('status', 'open');
+
+        // Vendas por tipo (apenas comandas fechadas)
+        $salesByType = [
+            'services' => $closedToday->sum(fn($o) => $o->items->where('type', 'service')->sum(fn($i) => $i->subtotal())),
+            'products' => $closedToday->sum(fn($o) => $o->items->where('type', 'product')->sum(fn($i) => $i->subtotal())),
+            'others'   => $closedToday->sum(fn($o) => $o->items->where('type', 'other')->sum(fn($i) => $i->subtotal())),
         ];
 
-        $clients       = Client::orderBy('name')->get(['id', 'name', 'phone', 'balance']);
+        // Vendas por forma de pagamento (apenas comandas fechadas)
+        $salesByPayment = [];
+        foreach ($closedToday as $order) {
+            foreach ($order->payments as $payment) {
+                $m = $payment->method;
+                $salesByPayment[$m] = round(($salesByPayment[$m] ?? 0) + $payment->effectiveAmount(), 2);
+            }
+        }
+        arsort($salesByPayment);
+
+        $summary = [
+            'openCount'      => $openToday->count(),
+            'closedCount'    => $closedToday->count(),
+            'expectedTotal'  => $allTodayOrders->sum('total'),
+            'actualTotal'    => $closedToday->sum('total'),
+            'salesByType'    => $salesByType,
+            'salesByPayment' => $salesByPayment,
+        ];
+
         $professionals = Professional::orderBy('name')->get(['id', 'name']);
         $services      = Service::where('active', true)->orderBy('name')->get();
         $products      = Product::where('active', true)->where('for_sale', true)->orderBy('name')->get();
 
         return view('app.orders.index', compact(
             'orders', 'date', 'status', 'summary',
-            'clients', 'professionals', 'services', 'products'
+            'professionals', 'services', 'products'
         ));
     }
 
@@ -150,11 +167,12 @@ class OrderController extends Controller
     public function addPayment(Request $request, Order $order)
     {
         $data = $request->validate([
-            'method'     => ['required', 'in:pix,credit_card,debit_card,cash,credit,debt'],
-            'amount'     => ['required', 'numeric', 'min:0.01'],
-            'fee_pct'    => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'fee_amount' => ['nullable', 'numeric', 'min:0'],
-            'notes'      => ['nullable', 'string'],
+            'method'       => ['required', 'in:pix,credit_card,debit_card,cash,credit,debt'],
+            'installments' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'amount'       => ['required', 'numeric', 'min:0.01'],
+            'fee_pct'      => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'fee_amount'   => ['nullable', 'numeric', 'min:0'],
+            'notes'        => ['nullable', 'string'],
         ]);
 
         // Garante que fee_pct e fee_amount batem (frontend envia os dois, mas recalcula para segurança)

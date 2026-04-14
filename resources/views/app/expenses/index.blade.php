@@ -6,11 +6,28 @@
 
     {{-- Cabeçalho --}}
     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Despesas</h1>
-            <p class="text-sm text-gray-400">{{ $month->translatedFormat('F \d\e Y') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">Despesas</h1>
+
+        {{-- Navegação de mês --}}
+        <div class="flex items-center gap-1 sm:mx-auto">
+            <a href="{{ route('expenses', ['month' => $month->copy()->subMonth()->format('Y-m')]) }}"
+               class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                </svg>
+            </a>
+            <div class="text-center px-2">
+                <p class="text-sm font-semibold text-gray-800">{{ $month->translatedFormat('F Y') }}</p>
+            </div>
+            <a href="{{ route('expenses', ['month' => $month->copy()->addMonth()->format('Y-m')]) }}"
+               class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+            </a>
         </div>
-        <div class="sm:ml-auto flex gap-2">
+
+        <div class="flex gap-2">
             <button @click="showCategory = true"
                 class="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
                 + Categoria
@@ -20,25 +37,6 @@
                 + Nova Despesa
             </button>
         </div>
-    </div>
-
-    {{-- Navegação de mês --}}
-    <div class="flex items-center gap-2">
-        <a href="{{ route('expenses', ['month' => $month->copy()->subMonth()->format('Y-m')]) }}"
-           class="rounded-xl p-2 hover:bg-gray-100 text-gray-500">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
-            </svg>
-        </a>
-        <span class="flex-1 text-center text-sm font-semibold text-gray-700">
-            {{ $month->translatedFormat('F Y') }}
-        </span>
-        <a href="{{ route('expenses', ['month' => $month->copy()->addMonth()->format('Y-m')]) }}"
-           class="rounded-xl p-2 hover:bg-gray-100 text-gray-500">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-            </svg>
-        </a>
     </div>
 
     {{-- Resumo --}}
