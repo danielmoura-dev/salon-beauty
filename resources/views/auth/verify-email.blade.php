@@ -1,26 +1,92 @@
 @extends('layouts.auth')
-@section('title', 'Verifique seu e-mail')
-@section('heading', 'Verifique seu e-mail')
+@section('title', 'Confirme seu e-mail')
+@section('heading', 'Confirme seu e-mail')
 
 @section('content')
-<div class="text-center space-y-4">
-    <svg class="h-14 w-14 mx-auto text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
-    <p class="text-gray-600 text-sm leading-relaxed">
-        Enviamos um link de confirmação para <strong>{{ auth()->user()->email }}</strong>.
-        Clique no link para ativar sua conta.
+<div class="space-y-6">
+    <p class="text-center text-gray-500 text-sm leading-relaxed">
+        Enviamos um código de 6 dígitos para<br>
+        <strong class="text-gray-700">{{ auth()->user()->email }}</strong>
     </p>
 
-    <form method="POST" action="{{ route('verification.send') }}">
+    @if(session('success'))
+        <p class="text-center text-sm text-green-600 font-medium">{{ session('success') }}</p>
+    @endif
+
+    @error('code')
+        <p class="text-center text-sm text-red-500">{{ $message }}</p>
+    @enderror
+
+    <form method="POST" action="{{ route('verification.verify') }}" id="codeForm">
         @csrf
+        <input type="hidden" name="code" id="codeInput">
+
+        <div class="flex justify-center gap-3 mb-6">
+            @for ($i = 0; $i < 6; $i++)
+                <input type="text"
+                       inputmode="numeric"
+                       maxlength="1"
+                       class="code-digit w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-xl
+                              focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-colors
+                              @error('code') border-red-400 @enderror"
+                       autocomplete="off">
+            @endfor
+        </div>
+
         <button type="submit"
-            class="w-full rounded-xl border border-primary-300 py-2.5 text-primary-600 font-medium hover:bg-primary-50 transition-colors text-sm">
-            Reenviar e-mail
+                class="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-xl
+                       transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400">
+            Verificar conta
         </button>
     </form>
 
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type="submit" class="text-sm text-gray-400 hover:text-gray-600">Sair</button>
-    </form>
+    <div class="text-center">
+        <form method="POST" action="{{ route('verification.send') }}" class="inline">
+            @csrf
+            <button type="submit" class="text-sm text-primary-600 hover:text-primary-800 font-medium">
+                Reenviar código
+            </button>
+        </form>
+        <span class="text-gray-300 mx-2">·</span>
+        <form method="POST" action="{{ route('logout') }}" class="inline">
+            @csrf
+            <button type="submit" class="text-sm text-gray-400 hover:text-gray-600">Sair</button>
+        </form>
+    </div>
 </div>
+
+<script>
+    const digits = document.querySelectorAll('.code-digit');
+    const codeInput = document.getElementById('codeInput');
+    const form = document.getElementById('codeForm');
+
+    digits.forEach((el, i) => {
+        el.addEventListener('input', () => {
+            el.value = el.value.replace(/\D/g, '').slice(-1);
+            if (el.value && i < digits.length - 1) digits[i + 1].focus();
+            syncCode();
+        });
+
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !el.value && i > 0) digits[i - 1].focus();
+        });
+
+        el.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+            pasted.split('').forEach((char, j) => {
+                if (digits[j]) digits[j].value = char;
+            });
+            const next = Math.min(pasted.length, digits.length - 1);
+            digits[next].focus();
+            syncCode();
+        });
+    });
+
+    function syncCode() {
+        codeInput.value = Array.from(digits).map(d => d.value).join('');
+    }
+
+    digits[0].focus();
+</script>
 @endsection

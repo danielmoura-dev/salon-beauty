@@ -67,35 +67,28 @@
                             Confirme seu E-mail
                         </h1>
                         <p style="color:#6b7280;font-size:14px;text-align:center;margin:0 0 32px;">
-                            Estamos quase lá! Só mais um passo.
+                            Olá, <strong style="color:#2FA7A0;">{{ $user->name }}</strong>! Use o código abaixo para ativar sua conta.
                         </p>
 
-                        <p style="color:#374151;font-size:16px;line-height:1.7;margin:0 0 16px;">
-                            Olá, <strong style="color:#2FA7A0;">{{ $user->name }}</strong>!
-                        </p>
-                        <p style="color:#4b5563;font-size:15px;line-height:1.7;margin:0 0 32px;">
-                            Bem-vindo(a) ao <strong style="color:#1c6e69;">Salon Beauty</strong>!
-                            Para ativar sua conta e aproveitar todos os recursos de gestão do seu salão,
-                            confirme seu endereço de e-mail clicando no botão abaixo:
-                        </p>
-
-                        {{-- Botão CTA --}}
+                        {{-- Código de verificação --}}
                         <table width="100%" cellpadding="0" cellspacing="0">
                             <tr>
-                                <td align="center" style="padding:4px 0 36px;">
-                                    <a href="{{ $verifyUrl }}"
-                                       style="display:inline-block;
-                                              background:linear-gradient(135deg,#2FA7A0 0%,#1c6e69 100%);
-                                              color:#ffffff;
-                                              text-decoration:none;
-                                              font-weight:700;
-                                              font-size:16px;
-                                              padding:18px 48px;
-                                              border-radius:50px;
-                                              letter-spacing:0.3px;
-                                              box-shadow:0 4px 16px rgba(47,167,160,0.35);">
-                                        Confirmar meu E-mail
-                                    </a>
+                                <td align="center" style="padding-bottom:36px;">
+                                    <div style="display:inline-block;
+                                                background:linear-gradient(135deg,#eaf6f5 0%,#f0faf9 100%);
+                                                border:2px solid #2FA7A0;
+                                                border-radius:16px;
+                                                padding:24px 40px;">
+                                        <p style="margin:0 0 8px;color:#6b7280;font-size:12px;
+                                                   letter-spacing:2px;text-transform:uppercase;text-align:center;">
+                                            seu código de verificação
+                                        </p>
+                                        <p style="margin:0;font-size:42px;font-weight:800;
+                                                   letter-spacing:12px;color:#1c6e69;
+                                                   text-align:center;font-family:'Courier New',monospace;">
+                                            {{ $code }}
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
@@ -108,20 +101,8 @@
                                             border-radius:0 12px 12px 0;
                                             padding:16px 20px;">
                                     <p style="color:#5a3d52;font-size:14px;line-height:1.6;margin:0;">
-                                        ⏱&nbsp; Este link de confirmação expira em <strong>60 minutos</strong>.
+                                        ⏱&nbsp; Este código expira em <strong>60 minutos</strong>.
                                         Se você não criou uma conta no Salon Beauty, ignore este e-mail.
-                                    </p>
-                                </td>
-                            </tr>
-                        </table>
-
-                        {{-- Separador --}}
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <td style="padding:32px 0 0;">
-                                    <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0;">
-                                        Após confirmar seu e-mail, você poderá acessar o painel completo
-                                        e começar a gerenciar seu salão com praticidade. 💇‍♀️✨
                                     </p>
                                 </td>
                             </tr>
@@ -137,16 +118,6 @@
                                 border-top:none;
                                 border-radius:0 0 20px 20px;
                                 padding:24px 48px 28px;">
-                        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 10px;">
-                            Se o botão acima não funcionar, copie e cole o link abaixo no seu navegador:
-                        </p>
-                        <p style="margin:0 0 20px;">
-                            <a href="{{ $verifyUrl }}"
-                               style="color:#2FA7A0;font-size:12px;word-break:break-all;
-                                      text-decoration:none;">
-                                {{ $verifyUrl }}
-                            </a>
-                        </p>
                         <table width="100%" cellpadding="0" cellspacing="0">
                             <tr>
                                 <td style="border-top:1px solid #e5e7eb;padding-top:18px;text-align:center;">

@@ -48,16 +48,22 @@ Route::middleware('guest')->group(function () {
 Route::post('/webhooks/stripe', [WebhookController::class, 'stripe'])->name('webhooks.stripe');
 Route::post('/webhooks/mercadopago', [WebhookController::class, 'mercadoPago'])->name('webhooks.mercadopago');
 
-// --- Verificação de email (Laravel built-in) ---
+// --- Verificação de email por código ---
 Route::middleware('auth')->group(function () {
     Route::get('/email/verify', fn() => view('auth.verify-email'))->name('verification.notice');
-    Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Foundation\Auth\EmailVerificationRequest $request) {
-        $request->fulfill();
+    Route::post('/email/verify', function (\Illuminate\Http\Request $request) {
+        $request->validate(['code' => 'required|string|size:6']);
+        $user = $request->user();
+        if (! $user->verifyCode($request->code)) {
+            return back()->withErrors(['code' => 'Código inválido ou expirado.']);
+        }
+        $user->markEmailAsVerified();
+        $user->update(['email_verification_code' => null, 'email_verification_code_expires_at' => null]);
         return redirect()->route('onboarding');
-    })->middleware('signed')->name('verification.verify');
+    })->name('verification.verify');
     Route::post('/email/resend', function (\Illuminate\Http\Request $request) {
         $request->user()->sendEmailVerificationNotification();
-        return back()->with('success', 'Link de verificação reenviado!');
+        return back()->with('success', 'Novo código enviado para o seu e-mail!');
     })->middleware('throttle:6,1')->name('verification.send');
 });
 

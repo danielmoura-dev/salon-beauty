@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -19,14 +16,16 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'google_id',
         'avatar', 'phone', 'role', 'onboarding_completed', 'email_verified_at',
+        'email_verification_code', 'email_verification_code_expires_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-        'email_verified_at'     => 'datetime',
-        'password'              => 'hashed',
-        'onboarding_completed'  => 'boolean',
+        'email_verified_at'                  => 'datetime',
+        'email_verification_code_expires_at' => 'datetime',
+        'password'                           => 'hashed',
+        'onboarding_completed'               => 'boolean',
     ];
 
     public function tenant(): BelongsTo
@@ -34,21 +33,33 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(Tenant::class);
     }
 
+    public function generateVerificationCode(): string
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $this->update([
+            'email_verification_code'             => $code,
+            'email_verification_code_expires_at'  => now()->addMinutes(60),
+        ]);
+        return $code;
+    }
+
+    public function verifyCode(string $code): bool
+    {
+        return $this->email_verification_code === $code
+            && $this->email_verification_code_expires_at?->isFuture();
+    }
+
     public function sendEmailVerificationNotification(): void
     {
-        $verifyUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            Carbon::now()->addMinutes(config('auth.verification.expire', 60)),
-            ['id' => $this->getKey(), 'hash' => sha1($this->getEmailForVerification())]
-        );
+        $code = $this->generateVerificationCode();
 
-        Mail::send([], [], function ($message) use ($verifyUrl) {
+        Mail::send([], [], function ($message) use ($code) {
             $message
                 ->to($this->email, $this->name)
                 ->subject('Confirme seu e-mail — Salon Beauty')
                 ->html(view('emails.verify-email', [
-                    'user'      => $this,
-                    'verifyUrl' => $verifyUrl,
+                    'user' => $this,
+                    'code' => $code,
                 ])->render());
         });
     }
