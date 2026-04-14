@@ -25,11 +25,11 @@ class LoginController extends Controller
 
             $user = Auth::user();
 
-            if (! $user->onboarding_completed) {
-                return redirect()->route('onboarding');
-            }
+            $default = $user->onboarding_completed
+                ? route('dashboard')
+                : route('onboarding');
 
-            return redirect()->intended(route('dashboard'));
+            return redirect()->intended($default);
         }
 
         return back()->withErrors([
