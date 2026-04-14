@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Payment;
 use App\Models\Professional;
 use App\Models\Service;
 use App\Models\Product;
@@ -228,13 +226,12 @@ class OrderController extends Controller
 
     public function cancel(Request $request, Order $order)
     {
-        $order->update(['status' => 'cancelled']);
+        $order->delete();
 
         if ($request->expectsJson()) {
-            $order->load(['client', 'items.professional', 'payments', 'appointment']);
-            return response()->json($order);
+            return response()->json(['deleted' => true]);
         }
-        return back()->with('success', 'Comanda cancelada.');
+        return back()->with('success', 'Comanda excluída.');
     }
 
     public function clearPayments(Request $request, Order $order)

@@ -1048,13 +1048,16 @@ function orderModal() {
 
         async confirmCancelOrder() {
             this.saving = true;
-            const res = await fetch(`/orders/${this.order.id}/cancel`, {
+            const orderId = this.order.id;
+            const res = await fetch(`/orders/${orderId}/cancel`, {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
             });
-            if (res.ok) this.order = await res.json();
-            this.saving            = false;
-            this.showCancelConfirm = false;
+            this.saving = false;
+            if (res.ok) {
+                window.dispatchEvent(new CustomEvent('order-deleted', { detail: { orderId } }));
+                this.close();
+            }
         },
 
         isPaid() {

@@ -151,6 +151,10 @@
     <div x-show="!showVendas" class="space-y-3">
         @forelse ($orders as $order)
             <div @click="$dispatch('open-order-modal', { orderId: '{{ $order->id }}' })"
+               x-show="!deletedIds.has('{{ $order->id }}')"
+               x-transition:leave="transition ease-in duration-150"
+               x-transition:leave-start="opacity-100 scale-100"
+               x-transition:leave-end="opacity-0 scale-95"
                class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 shadow-sm
                       px-4 py-3.5 hover:border-primary-200 transition-colors cursor-pointer">
 
@@ -318,6 +322,13 @@ function ordersPage() {
         showNew:          false,
         showVendas:       false,
         vendasTab:        'item',
+        deletedIds:       new Set(),
+
+        init() {
+            window.addEventListener('order-deleted', (e) => {
+                this.deletedIds = new Set([...this.deletedIds, e.detail.orderId]);
+            });
+        },
 
         // picker de cliente
         allClients:       [],   // lista completa carregada uma vez
