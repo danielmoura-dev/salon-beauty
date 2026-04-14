@@ -4,24 +4,24 @@
     @open-order-modal.window="open($event.detail.orderId)"
     x-show="show"
     x-cloak
-    class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4"
-    style="display:none">
+    class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+    style="z-index:100; display:none">
 
     <div class="absolute inset-0 bg-black/40" @click="close()"></div>
 
-    <div class="relative w-full max-w-xl rounded-2xl bg-white shadow-xl overflow-hidden flex flex-col max-h-[92vh]"
+    <div class="relative w-full max-w-xl rounded-2xl bg-white shadow-xl overflow-hidden flex flex-col max-h-[92vh] min-h-[280px]"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 translate-y-4"
          x-transition:enter-end="opacity-100 translate-y-0"
          @click.stop>
 
         {{-- Loading --}}
-        <div x-show="loading" class="p-10 text-center text-gray-400">
-            <svg class="animate-spin h-6 w-6 mx-auto mb-2 text-primary-400" fill="none" viewBox="0 0 24 24">
+        <div x-show="loading" class="flex-1 flex flex-col items-center justify-center gap-3 py-12 text-gray-400">
+            <svg class="animate-spin h-8 w-8 text-primary-400" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
             </svg>
-            <p class="text-sm">Carregando comanda…</p>
+            <p class="text-sm font-medium">Carregando comanda…</p>
         </div>
 
         {{-- Conteúdo --}}
@@ -31,7 +31,7 @@
             <div x-show="view === 'detail'" class="flex flex-col overflow-hidden flex-1">
 
                 {{-- Header --}}
-                <div class="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-gray-100">
+                <div class="flex items-start justify-between gap-3 px-5 pt-8 pb-4 border-b border-gray-100">
                     <div class="min-w-0">
                         <p class="font-bold text-gray-900 text-lg truncate" x-text="order?.client?.name"></p>
                         <p class="text-xs text-gray-400 mt-0.5" x-text="'Aberta em ' + formatDate(order?.created_at)"></p>
@@ -111,7 +111,10 @@
 
                         <template x-for="payment in order?.payments" :key="payment.id">
                             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                <p class="text-sm font-medium text-gray-700" x-text="methodLabel(payment.method)"></p>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700"
+                                       x-text="methodLabel(payment.method) + (payment.installments ? ' ' + payment.installments + 'x' : '')"></p>
+                                </div>
                                 <p class="text-sm font-semibold text-green-700" x-text="'+ ' + fmt(payment.amount)"></p>
                             </div>
                         </template>
@@ -126,7 +129,7 @@
                                 <span class="text-sm font-medium text-gray-600" x-text="balanceLabel()"></span>
                                 <span class="font-bold"
                                       :class="balance() < 0 ? 'text-red-500' : 'text-green-600'"
-                                      x-text="fmt(Math.abs(balance()))"></span>
+                                      x-text="balance() === 0 && totalPaid() > 0 ? fmt(totalPaid()) : fmt(Math.abs(balance()))"></span>
                             </div>
                         </template>
                     </div>
@@ -458,6 +461,18 @@
                                 <span class="font-bold text-green-700" x-text="fmt(entry.amount)"></span>
                             </div>
 
+                            {{-- Parcelas: somente para cartão de crédito --}}
+                            <div x-show="!entry.locked && entry.method === 'credit_card'">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Parcelas *</label>
+                                <select x-model.number="entry.installments"
+                                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                    <option value="">Selecione…</option>
+                                    <template x-for="n in [1,2,3,4,5,6,7,8,9,10,11,12]" :key="n">
+                                        <option :value="n" x-text="n + 'x'"></option>
+                                    </template>
+                                </select>
+                            </div>
+
                             {{-- Valor: editável --}}
                             <div x-show="!entry.locked">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
@@ -469,7 +484,7 @@
 
                     {{-- Botão adicionar 2ª forma — só aparece se houver menos de 2 e nenhuma travada (crédito) --}}
                     <button x-show="paymentEntries.length < 2 && !paymentEntries.some(e => e.locked)"
-                            @click="paymentEntries.push({ method: 'cash', amount: 0, baseAmount: 0, feePct: 0, feeAmount: 0, notes: '', locked: false })"
+                            @click="addSecondPaymentEntry()"
                             class="w-full rounded-xl border border-dashed border-gray-300 py-2 text-sm text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors">
                         + Adicionar 2ª forma de pagamento
                     </button>
@@ -712,18 +727,19 @@ function orderModal() {
                 const creditAmt = parseFloat(Math.min(this.clientCredit, totalDue).toFixed(2));
                 const secondBase = parseFloat(Math.max(totalDue - creditAmt, 0).toFixed(2));
                 this.paymentEntries = [
-                    { method: 'credit',   amount: creditAmt,                            baseAmount: creditAmt,  feePct: 0, feeAmount: 0, notes: '', locked: true },
-                    { method: lastMethod, amount: this.amountWithFee(secondBase, lastMethod), baseAmount: secondBase, feePct: this.feeForMethod(lastMethod), feeAmount: this.feeAmountFor(secondBase, lastMethod), notes: '', locked: false },
+                    { method: 'credit',   amount: creditAmt,                            baseAmount: creditAmt,  feePct: 0, feeAmount: 0, installments: null, notes: '', locked: true },
+                    { method: lastMethod, amount: this.amountWithFee(secondBase, lastMethod), baseAmount: secondBase, feePct: this.feeForMethod(lastMethod), feeAmount: this.feeAmountFor(secondBase, lastMethod), installments: null, notes: '', locked: false },
                 ];
             } else {
                 this.paymentEntries = [{
-                    method: lastMethod,
-                    amount: this.amountWithFee(totalDue, lastMethod),
-                    baseAmount: totalDue,
-                    feePct:     this.feeForMethod(lastMethod),
-                    feeAmount:  this.feeAmountFor(totalDue, lastMethod),
-                    notes: '',
-                    locked: false,
+                    method:       lastMethod,
+                    amount:       this.amountWithFee(totalDue, lastMethod),
+                    baseAmount:   totalDue,
+                    feePct:       this.feeForMethod(lastMethod),
+                    feeAmount:    this.feeAmountFor(totalDue, lastMethod),
+                    installments: null,
+                    notes:        '',
+                    locked:       false,
                 }];
             }
             this.view = 'addPayment';
@@ -756,9 +772,22 @@ function orderModal() {
             if (res.ok) this.order = await res.json();
         },
 
+        addSecondPaymentEntry() {
+            const remaining = parseFloat(Math.max(
+                this.sessionTotal() - this.totalPaid() - this.totalBaseEntering(), 0
+            ).toFixed(2));
+            this.paymentEntries.push({
+                method: 'cash', amount: remaining, baseAmount: remaining,
+                feePct: 0, feeAmount: 0, installments: null, notes: '', locked: false,
+            });
+        },
+
         checkCreditBeforeSubmit() {
             const entries = this.paymentEntries.filter(e => Number(e.amount) > 0);
             if (!entries.length) { this.paymentError = 'Informe ao menos um valor.'; return; }
+
+            const missingInstallments = entries.some(e => e.method === 'credit_card' && !e.installments);
+            if (missingInstallments) { this.paymentError = 'Informe o número de parcelas para cartão de crédito.'; return; }
 
             const credit = parseFloat(this.sessionChange().toFixed(2));
             if (credit > 0.01) {
@@ -776,11 +805,12 @@ function orderModal() {
             try {
                 for (const entry of entries) {
                     const payload = {
-                        method:     entry.method,
-                        amount:     entry.amount,
-                        fee_pct:    entry.feePct    ?? 0,
-                        fee_amount: entry.feeAmount ?? 0,
-                        notes:      entry.notes     ?? '',
+                        method:        entry.method,
+                        installments:  entry.method === 'credit_card' ? (entry.installments ?? null) : null,
+                        amount:        entry.amount,
+                        fee_pct:       entry.feePct    ?? 0,
+                        fee_amount:    entry.feeAmount ?? 0,
+                        notes:         entry.notes     ?? '',
                     };
                     const res = await fetch(`/orders/${this.order.id}/payments`, {
                         method: 'POST',

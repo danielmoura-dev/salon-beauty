@@ -14,7 +14,11 @@ class CategoryController extends Controller
             'type' => ['required', 'in:service,product,expense'],
         ]);
 
-        Category::create($data);
+        $category = Category::create($data);
+
+        if ($request->expectsJson()) {
+            return response()->json($category->fresh());
+        }
 
         return back()->with('success', 'Categoria cadastrada!');
     }

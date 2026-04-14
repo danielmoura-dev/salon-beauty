@@ -10,7 +10,7 @@ class Payment extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['order_id', 'method', 'amount', 'fee_pct', 'fee_amount', 'notes'];
+    protected $fillable = ['order_id', 'method', 'installments', 'amount', 'fee_pct', 'fee_amount', 'notes'];
 
     protected $casts = [
         'amount'     => 'decimal:2',

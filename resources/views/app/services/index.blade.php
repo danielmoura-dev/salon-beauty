@@ -89,15 +89,19 @@
             </x-form-field>
 
             <x-form-field label="Categoria">
-                <select name="category_id"
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Sem categoria</option>
-                    @foreach ($categories as $cat)
-                        <option value="{{ $cat->id }}" :selected="editing?.category_id === '{{ $cat->id }}'">
-                            {{ $cat->name }}
-                        </option>
-                    @endforeach
-                </select>
+                <div class="flex gap-2">
+                    <select name="category_id" x-model="selectedCategoryId"
+                        class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Sem categoria</option>
+                        <template x-for="cat in categories" :key="cat.id">
+                            <option :value="cat.id" x-text="cat.name"></option>
+                        </template>
+                    </select>
+                    <button type="button" @click="openCategory()"
+                        class="shrink-0 rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+                        + Nova
+                    </button>
+                </div>
             </x-form-field>
 
             <div class="grid grid-cols-2 gap-3">
@@ -137,26 +141,44 @@
         </form>
     </x-modal>
 
-    {{-- Modal Nova Categoria --}}
-    <x-modal name="category" title="Nova Categoria">
-        <form action="{{ route('categories.store') }}" method="POST" class="space-y-4">
-            @csrf
-            <input type="hidden" name="type" value="service">
-            <x-form-field label="Nome da categoria *">
-                <input type="text" name="name" required autofocus
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-            </x-form-field>
-            <div class="flex gap-2 pt-2">
-                <button type="button" @click="$dispatch('close-modal-category')"
-                    class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    Cancelar
-                </button>
-                <button type="submit"
-                    class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
-                    Criar
-                </button>
+    {{-- Modal Categorias --}}
+    <x-modal name="category" title="Categorias de Serviço">
+        <div class="space-y-5">
+
+            {{-- Lista de categorias existentes --}}
+            <div x-show="categories.length > 0">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Categorias existentes</p>
+                <div class="rounded-xl border border-gray-100 divide-y divide-gray-50 max-h-44 overflow-y-auto">
+                    <template x-for="cat in categories" :key="cat.id">
+                        <div class="flex items-center px-3 py-2.5">
+                            <span class="text-sm font-medium text-gray-700" x-text="cat.name"></span>
+                        </div>
+                    </template>
+                </div>
             </div>
-        </form>
+
+            {{-- Adicionar nova categoria --}}
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Nova categoria</p>
+                <div class="space-y-3">
+                    <input type="text" x-model="categoryFormName" placeholder="Nome da categoria"
+                        @keydown.enter.prevent="saveCategoryForm()"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    <p x-show="categoryFormError" x-text="categoryFormError" class="text-sm text-red-500"></p>
+                    <div class="flex gap-2">
+                        <button type="button" @click="$dispatch('close-modal-category')"
+                            class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Fechar
+                        </button>
+                        <button type="button" @click="saveCategoryForm()" :disabled="categoryFormSaving"
+                            class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                            <svg x-show="categoryFormSaving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <span x-text="categoryFormSaving ? 'Salvando…' : 'Adicionar'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </x-modal>
 
 </div>
@@ -165,9 +187,57 @@
 function servicesPage() {
     return {
         editing: null,
-        openCreate() { this.editing = null; this.$dispatch('open-modal-service'); },
-        openEdit(s)   { this.editing = s;    this.$dispatch('open-modal-service'); },
-        openCategory(){ this.$dispatch('open-modal-category'); },
+        categories: @json($categories),
+        selectedCategoryId: '',
+        categoryFormName: '',
+        categoryFormSaving: false,
+        categoryFormError: '',
+
+        openCreate() {
+            this.editing = null;
+            this.selectedCategoryId = '';
+            this.$dispatch('open-modal-service');
+        },
+
+        openEdit(s) {
+            this.editing = s;
+            this.$nextTick(() => { this.selectedCategoryId = s.category_id || ''; });
+            this.$dispatch('open-modal-service');
+        },
+
+        openCategory() {
+            this.categoryFormName = '';
+            this.categoryFormError = '';
+            this.$dispatch('open-modal-category');
+        },
+
+        async saveCategoryForm() {
+            if (!this.categoryFormName.trim()) { this.categoryFormError = 'Informe o nome.'; return; }
+            this.categoryFormSaving = true; this.categoryFormError = '';
+            try {
+                const res = await fetch('{{ route('categories.store') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    },
+                    body: JSON.stringify({ name: this.categoryFormName, type: 'service' }),
+                });
+                if (res.ok) {
+                    const cat = await res.json();
+                    this.categories.push({ id: cat.id, name: cat.name, type: cat.type });
+                    this.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                    this.selectedCategoryId = cat.id;
+                    this.categoryFormName = '';
+                    this.$dispatch('close-modal-category');
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    this.categoryFormError = err.message || 'Erro ao salvar.';
+                }
+            } catch { this.categoryFormError = 'Erro de conexão.'; }
+            finally  { this.categoryFormSaving = false; }
+        },
     }
 }
 </script>

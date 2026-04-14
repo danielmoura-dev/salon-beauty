@@ -40,7 +40,11 @@ class ClientController extends Controller
                 ->store('clients/' . auth()->user()->tenant_id, 'public');
         }
 
-        Client::create($data);
+        $client = Client::create($data);
+
+        if ($request->expectsJson()) {
+            return response()->json($client->fresh());
+        }
 
         return back()->with('success', 'Cliente cadastrado com sucesso!');
     }

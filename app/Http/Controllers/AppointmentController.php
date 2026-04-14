@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Category;
 use App\Models\Client;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -26,7 +27,7 @@ class AppointmentController extends Controller
             ->get();
 
         // Agendamentos do dia, agrupados por profissional
-        $appointments = Appointment::with(['client', 'professional', 'service'])
+        $appointments = Appointment::with(['client', 'professional', 'service', 'order.items'])
             ->whereDate('date', $date)
             ->whereIn('professional_id', $professionals->pluck('id'))
             ->whereNotIn('status', ['cancelled'])
@@ -34,8 +35,9 @@ class AppointmentController extends Controller
             ->groupBy('professional_id');
 
         // Dados para os modais
-        $clients  = Client::orderBy('name')->get(['id', 'name', 'phone']);
-        $services = Service::where('active', true)->orderBy('name')->get(['id', 'name', 'price', 'duration_min']);
+        $clients    = Client::orderBy('name')->get(['id', 'name', 'phone']);
+        $services   = Service::where('active', true)->orderBy('name')->get(['id', 'name', 'price', 'duration_min']);
+        $categories = Category::where('type', 'service')->orderBy('name')->get(['id', 'name']);
 
         $tenant    = auth()->user()->tenant;
         $startHour = $tenant->agenda_start_hour ?? 8;
@@ -50,7 +52,7 @@ class AppointmentController extends Controller
 
         return view('app.agenda.index', compact(
             'date', 'professionals', 'appointments',
-            'clients', 'services', 'slots', 'startHour', 'endHour'
+            'clients', 'services', 'categories', 'slots', 'startHour', 'endHour'
         ));
     }
 
@@ -65,7 +67,9 @@ class AppointmentController extends Controller
         $data = $request->validate([
             'client_id'       => ['required', 'uuid', 'exists:clients,id'],
             'professional_id' => ['required', 'uuid', 'exists:professionals,id'],
-            'service_id'      => ['required', 'uuid', 'exists:services,id'],
+            'service_id'      => ['nullable', 'uuid', 'exists:services,id'],
+            'service_ids'     => ['nullable', 'array'],
+            'service_ids.*'   => ['uuid', 'exists:services,id'],
             'date'            => ['required', 'date'],
             'start_time'      => ['required', 'date_format:H:i'],
             'end_time'        => ['required', 'date_format:H:i', 'after:start_time'],
@@ -74,12 +78,17 @@ class AppointmentController extends Controller
             'notes'           => ['nullable', 'string', 'max:500'],
         ]);
 
+        // Resolve list of service IDs (prefer service_ids array, fall back to single service_id)
+        $serviceIds = $data['service_ids'] ?? ($data['service_id'] ? [$data['service_id']] : []);
+        $primaryServiceId = $serviceIds[0] ?? null;
+
         $recurrenceGroupId = Str::uuid();
         $dates = $this->buildRecurrenceDates($data['date'], $data['recurrence'] ?? 'none');
 
         foreach ($dates as $date) {
             $appointment = Appointment::create([
                 ...$data,
+                'service_id'          => $primaryServiceId,
                 'date'                => $date,
                 'recurrence_group_id' => $recurrenceGroupId,
                 'create_order'        => $request->boolean('create_order', true),
@@ -87,16 +96,17 @@ class AppointmentController extends Controller
 
             // Cria comanda automaticamente se solicitado
             if ($appointment->create_order) {
-                $service = Service::find($data['service_id']);
+                $services = Service::whereIn('id', $serviceIds)->get();
+                $total = $services->sum('price');
 
                 $order = Order::create([
                     'client_id'      => $data['client_id'],
                     'appointment_id' => $appointment->id,
                     'status'         => 'open',
-                    'total'          => $service?->price ?? 0,
+                    'total'          => $total,
                 ]);
 
-                if ($service) {
+                foreach ($services as $service) {
                     OrderItem::create([
                         'order_id'        => $order->id,
                         'professional_id' => $data['professional_id'],
@@ -148,14 +158,32 @@ class AppointmentController extends Controller
         $deleteAll = $request->boolean('delete_recurrence');
 
         if ($deleteAll && $appointment->recurrence_group_id) {
-            Appointment::where('recurrence_group_id', $appointment->recurrence_group_id)
+            $appointments = Appointment::where('recurrence_group_id', $appointment->recurrence_group_id)
                 ->where('date', '>=', today())
-                ->delete();
+                ->get();
+
+            foreach ($appointments as $apt) {
+                $this->deleteOrderForAppointment($apt);
+                $apt->delete();
+            }
         } else {
+            $this->deleteOrderForAppointment($appointment);
             $appointment->delete();
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function deleteOrderForAppointment(Appointment $appointment): void
+    {
+        if (! $appointment->order_id) return;
+
+        $order = $appointment->order()->with(['items', 'payments'])->first();
+        if (! $order) return;
+
+        $order->items()->delete();
+        $order->payments()->delete();
+        $order->delete();
     }
 
     // Gera as datas de recorrência (máximo 12 ocorrências)

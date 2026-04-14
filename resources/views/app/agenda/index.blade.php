@@ -192,7 +192,7 @@
                                 class="absolute rounded-xl border px-2 py-1 cursor-pointer overflow-hidden
                                        {{ $cfg['bg'] }} {{ $cfg['border'] }} hover:brightness-95 transition-all"
                                 style="top:{{ $apt->gridTop($startHour) }}px; height:{{ max($apt->gridHeight() - 4, 24) }}px; left:calc({{ $lPct }}% + 2px); width:calc({{ $wPct }}% - 4px); z-index:{{ $zIdx }};"
-                                @click.stop="openDetail({{ $apt->load(['client', 'service'])->toJson() }})"
+                                @click.stop="openDetail({{ $apt->load(['client', 'service', 'order.items'])->toJson() }})"
                             >
                                 <div class="flex items-start justify-between gap-1">
                                     <p class="text-xs font-bold {{ $cfg['text'] }} leading-tight">
@@ -207,8 +207,14 @@
                                     {{ $apt->client->name }}
                                 </p>
                                 @if ($apt->gridHeight() > 48)
+                                    @php
+                                        $svcNames = $apt->order?->items
+                                            ->where('type', 'service')
+                                            ->pluck('description')
+                                            ->implode(', ');
+                                    @endphp
                                     <p class="text-xs {{ $cfg['text'] }} opacity-75 truncate leading-tight">
-                                        – {{ $apt->service?->name ?? '' }}
+                                        {{ $svcNames ?: ($apt->service?->name ?? '') }}
                                     </p>
                                 @endif
                             </div>
@@ -234,21 +240,119 @@
         </div>
     </div>{{-- fim agenda-body --}}
 
-    {{-- ===== MODAL: NOVO AGENDAMENTO ===== --}}
+    {{-- ===== MODAL: SELECIONAR CLIENTE ===== --}}
+    <div x-show="showPickClient" x-cloak
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:100; display:none">
+        <div class="absolute inset-0 bg-black/40" @click="closePickClient()"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             @click.stop>
+            <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+                <h2 class="font-semibold text-gray-900">Selecionar Cliente</h2>
+                <button @click="closePickClient()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-4 py-3 border-b border-gray-100 flex gap-2">
+                <input type="text" x-model="clientSearch" placeholder="Buscar por nome ou telefone…"
+                       class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <button type="button" @click="openClientFormOverlay()"
+                    class="shrink-0 rounded-xl bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                    + Novo
+                </button>
+            </div>
+            <div class="px-3 py-2" style="height: 220px; overflow-y: auto; flex-shrink: 0;">
+                <template x-for="client in filteredClients()" :key="client.id">
+                    <button type="button" @click="selectClient(client)"
+                        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-primary-50 transition-colors text-left">
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-gray-900 text-sm" x-text="client.name"></p>
+                            <p class="text-xs text-gray-400" x-text="client.phone || 'Sem telefone'"></p>
+                        </div>
+                    </button>
+                </template>
+                <p x-show="filteredClients().length === 0" class="text-center text-sm text-gray-400 py-8">Nenhum cliente encontrado.</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== MODAL: SELECIONAR SERVIÇO (múltiplos) ===== --}}
+    <div x-show="showPickService" x-cloak
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:100; display:none">
+        <div class="absolute inset-0 bg-black/40" @click="closePickService()"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             @click.stop>
+            <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+                <h2 class="font-semibold text-gray-900">Selecionar Serviços</h2>
+                <button @click="closePickService()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-4 py-3 border-b border-gray-100 flex gap-2">
+                <input type="text" x-model="serviceSearch" placeholder="Buscar serviço…"
+                       class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <button type="button" @click="openServiceFormOverlay()"
+                    class="shrink-0 rounded-xl bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                    + Novo
+                </button>
+            </div>
+            <div class="px-3 py-2" style="height: 220px; overflow-y: auto; flex-shrink: 0;">
+                <template x-for="service in filteredServices()" :key="service.id">
+                    <button type="button" @click="toggleService(service)"
+                        class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-left"
+                        :class="isServiceSelected(service.id) ? 'bg-primary-50' : 'hover:bg-gray-50'">
+                        <div class="shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                             :class="isServiceSelected(service.id) ? 'border-primary-500 bg-primary-500' : 'border-gray-300'">
+                            <svg x-show="isServiceSelected(service.id)" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-gray-900 text-sm" x-text="service.name"
+                               :class="isServiceSelected(service.id) ? 'text-primary-800' : ''"></p>
+                            <p class="text-xs text-gray-400"
+                               x-text="service.duration_min + 'min · R$ ' + Number(service.price).toFixed(2).replace('.', ',')"></p>
+                        </div>
+                    </button>
+                </template>
+                <p x-show="filteredServices().length === 0" class="text-center text-sm text-gray-400 py-8">Nenhum serviço encontrado.</p>
+            </div>
+            <div class="px-4 py-3 border-t border-gray-100">
+                <button type="button" @click="confirmServices()"
+                    :disabled="selectedServices.length === 0"
+                    class="w-full rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 transition-opacity">
+                    <span x-text="selectedServices.length > 0 ? 'Confirmar (' + selectedServices.length + ')' : 'Selecione ao menos um serviço'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== MODAL: NOVO/EDITAR AGENDAMENTO ===== --}}
     <div x-show="showNew" x-cloak
-         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-         style="display:none">
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:100; display:none">
         <div class="absolute inset-0 bg-black/40" @click="showNew = false"></div>
-        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl max-h-[90vh] flex flex-col"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-y-4"
              x-transition:enter-end="opacity-100 translate-y-0"
              @click.stop>
 
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between px-6" style="padding-top: 1.75rem; padding-bottom: 1rem;">
                 <h2 class="text-lg font-semibold text-gray-900" x-text="editingId ? 'Editar Agendamento' : 'Novo Agendamento'"></h2>
-                <button @click="showNew = false" class="text-gray-400 hover:text-gray-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button @click="showNew = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
+
+            <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6 space-y-4">
 
             {{-- Alerta de conflito --}}
             <div x-show="showConflict" x-cloak class="rounded-xl bg-yellow-50 border border-yellow-200 p-4 space-y-3">
@@ -268,43 +372,53 @@
                 </div>
                 <div class="flex gap-2">
                     <button type="button" @click="showConflict = false"
-                        class="flex-1 rounded-xl border border-yellow-300 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100">
-                        Voltar
-                    </button>
+                        class="flex-1 rounded-xl border border-yellow-300 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100">Voltar</button>
                     <button type="button" @click="submitAppointment(true)" :disabled="saving"
-                        class="flex-1 rounded-xl bg-primary-600 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
-                        + Agendamento
-                    </button>
+                        class="flex-1 rounded-xl bg-primary-600 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">+ Agendamento</button>
                 </div>
             </div>
 
             <form x-show="!showConflict" @submit.prevent="submitAppointment()" class="space-y-4">
 
-                {{-- Cliente --}}
+                {{-- Cliente: pill clicável --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
-                    <select x-model="form.client_id" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Selecione o cliente…</option>
-                        @foreach ($clients as $client)
-                            <option value="{{ $client->id }}">{{ $client->name }} {{ $client->phone ? '· '.$client->phone : '' }}</option>
-                        @endforeach
-                    </select>
+                    <button type="button" @click="openPickClientFromForm()"
+                        class="w-full rounded-xl border-2 px-3 py-2.5 text-left text-sm transition-colors flex items-center justify-between gap-2"
+                        :class="selectedClient ? 'border-primary-300 bg-primary-50' : 'border-dashed border-gray-300 hover:border-primary-300'">
+                        <span :class="selectedClient ? 'font-semibold text-primary-700' : 'text-gray-400'"
+                              x-text="selectedClient ? selectedClient.name : 'Selecionar cliente…'"></span>
+                        <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                        </svg>
+                    </button>
                 </div>
 
-                {{-- Serviço --}}
+                {{-- Serviços: múltipla seleção --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Serviço *</label>
-                    <select x-model="form.service_id" @change="applyServiceDuration()" required
-                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Selecione o serviço…</option>
-                        @foreach ($services as $service)
-                            <option value="{{ $service->id }}"
-                                    data-duration="{{ $service->duration_min }}">
-                                {{ $service->name }} — {{ $service->duration_min }}min — R$ {{ number_format($service->price, 2, ',', '.') }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Serviços *</label>
+                    <div class="flex flex-wrap gap-1.5 mb-2" x-show="selectedServices.length > 0">
+                        <template x-for="svc in selectedServices" :key="svc.id">
+                            <span class="inline-flex items-center gap-1 rounded-full bg-primary-100 text-primary-700 text-xs font-medium px-2.5 py-1">
+                                <span x-text="svc.name"></span>
+                                <button type="button" @click="toggleService(svc); applyServiceDuration()"
+                                    class="text-primary-400 hover:text-primary-700 leading-none">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </span>
+                        </template>
+                    </div>
+                    <button type="button" @click="openPickServiceFromForm()"
+                        class="w-full rounded-xl border-2 px-3 py-2.5 text-left text-sm transition-colors flex items-center justify-between gap-2"
+                        :class="selectedServices.length ? 'border-primary-300 bg-primary-50' : 'border-dashed border-gray-300 hover:border-primary-300'">
+                        <span :class="selectedServices.length ? 'font-semibold text-primary-700' : 'text-gray-400'"
+                              x-text="selectedServices.length ? '+ Adicionar / alterar serviços' : 'Selecionar serviço…'"></span>
+                        <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                        </svg>
+                    </button>
                 </div>
 
                 {{-- Profissional --}}
@@ -327,8 +441,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Início</label>
-                        <input type="time" x-model="form.start_time" step="900"
-                               @change="recalcEndTime()"
+                        <input type="time" x-model="form.start_time" step="900" @change="recalcEndTime()"
                                class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
@@ -367,7 +480,6 @@
                         class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
                 </div>
 
-                {{-- Erro --}}
                 <p x-show="formError" x-text="formError" class="text-sm text-red-500 text-center"></p>
 
                 <div class="flex gap-2 pt-2">
@@ -375,20 +487,137 @@
                         class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         Cancelar
                     </button>
-                    <button type="submit" :disabled="saving"
+                    <button type="submit" :disabled="saving || !selectedClient || !selectedServices.length"
                         class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
                         <span x-show="!saving">Agendar</span>
                         <span x-show="saving">Salvando…</span>
                     </button>
                 </div>
             </form>
+            </div>{{-- fim scroll --}}
+        </div>
+    </div>
+
+    {{-- ===== MODAL: FORMULÁRIO CLIENTE ===== --}}
+    <div x-show="showClientForm" x-cloak
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:110; display:none">
+        <div class="absolute inset-0 bg-black/50" @click="showClientForm = false"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl max-h-[90vh] flex flex-col"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             @click.stop>
+            <div class="flex items-center justify-between px-6" style="padding-top: 1.75rem; padding-bottom: 1rem;">
+                <h2 class="text-lg font-semibold text-gray-900">Novo Cliente</h2>
+                <button @click="showClientForm = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                    <input type="text" x-model="clientFormData.name"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                        <input type="tel" x-model="clientFormData.phone"
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Aniversário</label>
+                        <input type="date" x-model="clientFormData.birthday"
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input type="email" x-model="clientFormData.email"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <p x-show="clientFormError" x-text="clientFormError" class="text-sm text-red-500"></p>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" @click="showClientForm = false"
+                        class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+                    <button type="button" @click="saveClientForm()" :disabled="clientFormSaving"
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
+                        <span x-show="!clientFormSaving">Salvar</span>
+                        <span x-show="clientFormSaving">Salvando…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== MODAL: FORMULÁRIO SERVIÇO ===== --}}
+    <div x-show="showServiceForm" x-cloak
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:110; display:none">
+        <div class="absolute inset-0 bg-black/50" @click="showServiceForm = false"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl max-h-[90vh] flex flex-col"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             @click.stop>
+            <div class="flex items-center justify-between px-6" style="padding-top: 1.75rem; padding-bottom: 1rem;">
+                <h2 class="text-lg font-semibold text-gray-900">Novo Serviço</h2>
+                <button @click="showServiceForm = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-6 pb-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                    <input type="text" x-model="serviceFormData.name"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                    <select x-model="serviceFormData.category_id"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Sem categoria</option>
+                        <template x-for="cat in categories" :key="cat.id">
+                            <option :value="cat.id" x-text="cat.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Preço (R$) *</label>
+                        <input type="number" x-model.number="serviceFormData.price" step="0.01" min="0"
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Duração (min) *</label>
+                        <input type="number" x-model.number="serviceFormData.duration_min" min="5" step="5"
+                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Comissão (%)</label>
+                    <input type="number" x-model.number="serviceFormData.commission_pct" min="0" max="100" step="0.5"
+                        class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <p x-show="serviceFormError" x-text="serviceFormError" class="text-sm text-red-500"></p>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" @click="showServiceForm = false"
+                        class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+                    <button type="button" @click="saveServiceForm()" :disabled="serviceFormSaving"
+                        class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
+                        <span x-show="!serviceFormSaving">Salvar</span>
+                        <span x-show="serviceFormSaving">Salvando…</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
     {{-- ===== MODAL: DETALHES DO AGENDAMENTO ===== --}}
     <div x-show="showDetail" x-cloak
-         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-         style="display:none">
+         class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
+         style="z-index:100; display:none">
         <div class="absolute inset-0 bg-black/40" @click="showDetail = false"></div>
         <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden"
              x-transition:enter="transition ease-out duration-200"
@@ -399,7 +628,7 @@
             {{-- Barra colorida no topo conforme status --}}
             <div class="h-1.5 w-full" :class="statusBg(detail?.status)"></div>
 
-            <div class="p-5 space-y-4">
+            <div class="px-5 pt-6 pb-5 space-y-4">
 
                 {{-- Header: foto + nome + saldo + fechar --}}
                 <div class="flex items-start justify-between gap-3">
@@ -439,9 +668,8 @@
                         <span class="text-gray-400 mx-1">·</span>
                         <span x-text="detail?.start_time?.substring(0,5) + ' – ' + detail?.end_time?.substring(0,5)"></span>
                     </p>
-                    <p x-show="detail?.service?.name"
-                       class="text-sm text-gray-500"
-                       x-text="detail?.service?.name"></p>
+                    <p class="text-sm text-gray-500"
+                       x-text="detail?.order?.items?.filter(i => i.type === 'service').map(i => i.description).join(', ') || detail?.service?.name || ''"></p>
                 </div>
 
                 {{-- Status badge --}}
@@ -460,25 +688,35 @@
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                         Alterar status
                     </label>
-                    @php
-                        $activeBtnCls = [
-                            'scheduled' => 'bg-blue-600 text-white border-blue-700',
-                            'confirmed' => 'bg-green-600 text-white border-green-700',
-                            'completed' => 'bg-gray-500 text-white border-gray-600',
-                            'cancelled' => 'bg-red-600 text-white border-red-700',
-                        ];
-                    @endphp
                     <div class="flex gap-2">
-                        @foreach (\App\Models\Appointment::$statusConfig as $key => $cfg)
-                            <button
-                                @click="changeStatus('{{ $key }}')"
-                                :class="detail?.status === '{{ $key }}'
-                                    ? '{{ $activeBtnCls[$key] }} border'
-                                    : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'"
-                                class="flex-1 text-sm font-medium py-2 rounded-xl border transition-colors whitespace-nowrap">
-                                {{ $cfg['label'] }}
-                            </button>
-                        @endforeach
+                        <button @click="changeStatus('scheduled')"
+                            :class="detail?.status === 'scheduled'
+                                ? 'bg-blue-600 text-white border border-blue-700'
+                                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'"
+                            class="flex-1 text-sm font-medium py-2 rounded-xl border transition-colors whitespace-nowrap">
+                            Agendado
+                        </button>
+                        <button @click="changeStatus('confirmed')"
+                            :class="detail?.status === 'confirmed'
+                                ? 'bg-green-600 text-white border border-green-700'
+                                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'"
+                            class="flex-1 text-sm font-medium py-2 rounded-xl border transition-colors whitespace-nowrap">
+                            Confirmado
+                        </button>
+                        <button @click="changeStatus('completed')"
+                            :class="detail?.status === 'completed'
+                                ? 'bg-gray-600 text-white border border-gray-700'
+                                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'"
+                            class="flex-1 text-sm font-medium py-2 rounded-xl border transition-colors whitespace-nowrap">
+                            Finalizado
+                        </button>
+                        <button @click="changeStatus('cancelled')"
+                            :class="detail?.status === 'cancelled'
+                                ? 'bg-red-600 text-white border border-red-700'
+                                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'"
+                            class="flex-1 text-sm font-medium py-2 rounded-xl border transition-colors whitespace-nowrap">
+                            Cancelado
+                        </button>
                     </div>
                 </div>
 
@@ -546,8 +784,6 @@
 
 <script>
 function agenda() {
-    const services = @json($services->keyBy('id'));
-
     @php
         $aptsByProfJson = $appointments->map(fn($apts) => $apts->map(fn($a) => [
             'id'         => $a->id,
@@ -556,51 +792,226 @@ function agenda() {
         ])->values());
     @endphp
     const aptsByProfessional = @json($aptsByProfJson);
+    const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
     return {
-        showNew: false,
-        showDetail: false,
-        showConflict: false,
-        conflictInfo: [],
-        saving: false,
-        formError: '',
-        deleteAll: false,
-        confirmDelete: false,
-        detail: null,
-        editingId: null,
+        // ── Estado geral ──────────────────────────────────────────────────
+        showNew:         false,
+        showDetail:      false,
+        showConflict:    false,
+        conflictInfo:    [],
+        saving:          false,
+        formError:       '',
+        deleteAll:       false,
+        confirmDelete:   false,
+        detail:          null,
+        editingId:       null,
         statusOverrides: {},
 
+        // ── Picker de cliente/serviço ─────────────────────────────────────
+        showPickClient:   false,
+        showPickService:  false,
+        clientFormContext:  null,   // null | 'fromForm'
+        serviceFormContext: null,   // null | 'fromForm'
+        clientSearch:     '',
+        serviceSearch:    '',
+        allClients:        @json($clients),
+        allServices:       @json($services),
+        categories:        @json($categories),
+        selectedClient:    null,
+        selectedServices:  [],
+
+        // ── Formulários de criação rápida (z-70) ──────────────────────────
+        showClientForm:    false,
+        showServiceForm:   false,
+        clientFormData:    { name: '', phone: '', email: '', birthday: '', notes: '' },
+        serviceFormData:   { name: '', category_id: '', price: '', duration_min: 60, commission_pct: 0 },
+        clientFormError:   '',
+        serviceFormError:  '',
+        clientFormSaving:  false,
+        serviceFormSaving: false,
+
+        // ── Formulário de agendamento ─────────────────────────────────────
         form: {
-            client_id: '',
-            professional_id: '',
-            service_id: '',
+            client_id: '', professional_id: '', service_id: '',
             date: '{{ $date->toDateString() }}',
-            start_time: '09:00',
-            end_time: '10:00',
-            recurrence: 'none',
-            create_order: true,
-            notes: '',
+            start_time: '09:00', end_time: '10:00',
+            recurrence: 'none', create_order: true, notes: '',
         },
 
+        // ── Filtros ───────────────────────────────────────────────────────
+        filteredClients() {
+            const q = this.clientSearch.toLowerCase().trim();
+            if (!q) return this.allClients;
+            return this.allClients.filter(c =>
+                c.name.toLowerCase().includes(q) || (c.phone || '').includes(q)
+            );
+        },
+
+        filteredServices() {
+            const q = this.serviceSearch.toLowerCase().trim();
+            if (!q) return this.allServices;
+            return this.allServices.filter(s => s.name.toLowerCase().includes(q));
+        },
+
+        // ── Fluxo: abrir agendamento (inicia no picker de cliente) ────────
         openNewAppointment(professionalId, date, slot) {
-            this.editingId    = null;
-            this.showConflict = false;
-            this.conflictInfo = [];
+            this.editingId     = null;
+            this.showConflict  = false;
+            this.conflictInfo  = [];
+            this.selectedClient   = null;
+            this.selectedServices = [];
+            this.clientSearch     = '';
+            this.formError        = '';
             this.form = {
-                client_id:       '',
-                professional_id: professionalId,
-                service_id:      '',
-                date:            date,
-                start_time:      slot,
-                end_time:        this.addMinutes(slot, 60),
-                recurrence:      'none',
-                create_order:    true,
-                notes:           '',
+                client_id: '', professional_id: professionalId, service_id: '',
+                date, start_time: slot, end_time: this.addMinutes(slot, 60),
+                recurrence: 'none', create_order: true, notes: '',
             };
-            this.formError = '';
-            this.showNew   = true;
+            this.clientFormContext  = null;
+            this.serviceFormContext = null;
+            this.showPickClient = true;
         },
 
+        // ── Fechar pickers sem perder o form de agendamento ───────────────
+        closePickClient() {
+            this.showPickClient = false;
+            if (this.clientFormContext === 'fromForm') {
+                this.clientFormContext = null;
+                this.showNew = true;
+            }
+        },
+
+        closePickService() {
+            this.showPickService = false;
+            if (this.serviceFormContext === 'fromForm') {
+                this.serviceFormContext = null;
+                this.showNew = true;
+            }
+        },
+
+        // ── Selecionar cliente no picker ──────────────────────────────────
+        selectClient(client) {
+            this.selectedClient   = client;
+            this.form.client_id   = client.id;
+            this.showPickClient   = false;
+            if (this.clientFormContext === 'fromForm') {
+                this.clientFormContext = null;
+                this.showNew = true;
+            } else {
+                this.clientFormContext = null;
+                this.serviceSearch = '';
+                this.showPickService = true;
+            }
+        },
+
+        // ── Selecionar/desselecionar serviço no picker (múltiplos) ───────
+        isServiceSelected(id) {
+            return this.selectedServices.some(s => s.id === id);
+        },
+
+        toggleService(service) {
+            const idx = this.selectedServices.findIndex(s => s.id === service.id);
+            if (idx >= 0) {
+                this.selectedServices.splice(idx, 1);
+            } else {
+                this.selectedServices.push(service);
+            }
+        },
+
+        confirmServices() {
+            this.applyServiceDuration();
+            this.showPickService  = false;
+            if (this.serviceFormContext === 'fromForm') {
+                this.serviceFormContext = null;
+                this.showNew = true;
+            } else {
+                this.serviceFormContext = null;
+                this.showNew = true;
+            }
+        },
+
+        // ── Abrir picker a partir do form de agendamento ──────────────────
+        openPickClientFromForm() {
+            this.showNew           = false;
+            this.clientSearch      = '';
+            this.clientFormContext = 'fromForm';
+            this.showPickClient    = true;
+        },
+
+        openPickServiceFromForm() {
+            this.showNew            = false;
+            this.serviceSearch      = '';
+            this.serviceFormContext = 'fromForm';
+            this.showPickService    = true;
+        },
+
+        // ── Abrir formulário de criação por cima do picker ────────────────
+        openClientFormOverlay() {
+            this.clientFormData  = { name: this.clientSearch, phone: '', email: '', birthday: '', notes: '' };
+            this.clientFormError = '';
+            this.showClientForm  = true;
+        },
+
+        openServiceFormOverlay() {
+            this.serviceFormData  = { name: this.serviceSearch, category_id: '', price: '', duration_min: 60, commission_pct: 0 };
+            this.serviceFormError = '';
+            this.showServiceForm  = true;
+        },
+
+        // ── Salvar cliente via AJAX ───────────────────────────────────────
+        async saveClientForm() {
+            if (!this.clientFormData.name.trim()) { this.clientFormError = 'Informe o nome.'; return; }
+            this.clientFormSaving = true; this.clientFormError = '';
+            try {
+                const res = await fetch('/clients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify(this.clientFormData),
+                });
+                if (res.ok) {
+                    const client = await res.json();
+                    this.allClients.push({ id: client.id, name: client.name, phone: client.phone });
+                    this.allClients.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                    this.showClientForm = false;
+                    this.selectClient({ id: client.id, name: client.name, phone: client.phone });
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    this.clientFormError = err.message || 'Erro ao salvar.';
+                }
+            } catch { this.clientFormError = 'Erro de conexão.'; }
+            finally  { this.clientFormSaving = false; }
+        },
+
+        // ── Salvar serviço via AJAX ───────────────────────────────────────
+        async saveServiceForm() {
+            if (!this.serviceFormData.name.trim() || !this.serviceFormData.price) {
+                this.serviceFormError = 'Informe nome e preço.'; return;
+            }
+            this.serviceFormSaving = true; this.serviceFormError = '';
+            try {
+                const res = await fetch('/services', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify(this.serviceFormData),
+                });
+                if (res.ok) {
+                    const service = await res.json();
+                    const svc = { id: service.id, name: service.name, price: service.price, duration_min: service.duration_min };
+                    this.allServices.push(svc);
+                    this.allServices.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                    this.showServiceForm = false;
+                    if (!this.isServiceSelected(svc.id)) this.selectedServices.push(svc);
+                    this.confirmServices();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    this.serviceFormError = err.message || 'Erro ao salvar.';
+                }
+            } catch { this.serviceFormError = 'Erro de conexão.'; }
+            finally  { this.serviceFormSaving = false; }
+        },
+
+        // ── Abrir na mesma slot (do detail) ──────────────────────────────
         openAtSameSlot() {
             const profId = this.detail.professional_id;
             const date   = this.detail.date?.substring(0, 10);
@@ -609,6 +1020,7 @@ function agenda() {
             this.openNewAppointment(profId, date, slot);
         },
 
+        // ── Editar agendamento (vai direto ao form) ───────────────────────
         openEditAppointment() {
             this.editingId = this.detail.id;
             this.form = {
@@ -622,30 +1034,36 @@ function agenda() {
                 create_order:    this.detail.create_order ?? false,
                 notes:           this.detail.notes ?? '',
             };
-            this.formError = '';
+            this.selectedClient   = this.allClients.find(c => c.id === this.detail.client_id)
+                                    || this.detail.client
+                                    || null;
+            const svc = this.allServices.find(s => s.id === this.detail.service_id) || this.detail.service || null;
+            this.selectedServices = svc ? [svc] : [];
+            this.formError  = '';
             this.showDetail = false;
-            this.showNew = true;
+            this.showNew    = true;
         },
 
+        // ── Helpers de horário ────────────────────────────────────────────
         applyServiceDuration() {
-            const svc = services[this.form.service_id];
-            if (svc) {
-                this.form.end_time = this.addMinutes(this.form.start_time, svc.duration_min);
+            const total = this.selectedServices.reduce((sum, s) => sum + (s.duration_min || 0), 0);
+            if (total > 0) {
+                this.form.end_time = this.addMinutes(this.form.start_time, total);
             }
         },
 
         recalcEndTime() {
-            const svc = services[this.form.service_id];
-            const mins = svc ? svc.duration_min : 60;
+            const mins = this.selectedServices.reduce((sum, s) => sum + (s.duration_min || 0), 0) || 60;
             this.form.end_time = this.addMinutes(this.form.start_time, mins);
         },
 
         addMinutes(time, mins) {
             const [h, m] = time.split(':').map(Number);
-            const total = h * 60 + m + mins;
+            const total  = h * 60 + m + mins;
             return String(Math.floor(total / 60) % 24).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
         },
 
+        // ── Conflitos ─────────────────────────────────────────────────────
         getConflicts() {
             const apts     = aptsByProfessional[this.form.professional_id] ?? [];
             const newStart = this.form.start_time.substring(0, 5);
@@ -656,90 +1074,79 @@ function agenda() {
             });
         },
 
+        // ── Submeter agendamento ──────────────────────────────────────────
         async submitAppointment(force = false) {
+            if (!this.form.client_id)        { this.formError = 'Selecione um cliente.';  return; }
+            if (!this.selectedServices.length) { this.formError = 'Selecione ao menos um serviço.'; return; }
             if (!force) {
                 const conflicts = this.getConflicts();
-                if (conflicts.length > 0) {
-                    this.conflictInfo = conflicts;
-                    this.showConflict = true;
-                    return;
-                }
+                if (conflicts.length > 0) { this.conflictInfo = conflicts; this.showConflict = true; return; }
             }
             this.showConflict = false;
-            this.saving = true;
-            this.formError = '';
+            this.saving       = true;
+            this.formError    = '';
             try {
-                const url = this.editingId
-                    ? `/appointments/${this.editingId}`
-                    : '{{ route('appointments.store') }}';
+                const url    = this.editingId ? `/appointments/${this.editingId}` : '{{ route('appointments.store') }}';
                 const method = this.editingId ? 'PATCH' : 'POST';
-                const res = await fetch(url, {
+                const payload = {
+                    ...this.form,
+                    service_id:  this.selectedServices[0]?.id ?? '',
+                    service_ids: this.selectedServices.map(s => s.id),
+                };
+                const res    = await fetch(url, {
                     method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-                            || '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify(this.form),
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify(payload),
                 });
                 if (res.ok) {
-                    this.showNew = false;
+                    this.showNew   = false;
                     this.editingId = null;
                     window.location.reload();
                 } else {
-                    const err = await res.json();
+                    const err = await res.json().catch(() => ({}));
                     this.formError = err.message || 'Erro ao salvar. Verifique os campos.';
                 }
-            } catch (e) {
-                this.formError = 'Erro de conexão.';
-            } finally {
-                this.saving = false;
-            }
+            } catch { this.formError = 'Erro de conexão.'; }
+            finally  { this.saving = false; }
         },
 
+        // ── Detail ────────────────────────────────────────────────────────
         openDetail(appointment) {
             this.detail = { ...appointment };
             if (this.statusOverrides[appointment.id] !== undefined) {
                 this.detail.status = this.statusOverrides[appointment.id];
             }
-            this.deleteAll = false;
+            this.deleteAll     = false;
             this.confirmDelete = false;
-            this.showDetail = true;
+            this.showDetail    = true;
         },
 
         async changeStatus(status) {
             this.statusOverrides[this.detail.id] = status;
             this.detail.status = status;
-            this.showDetail = false;
+            this.showDetail    = false;
 
             if (status === 'completed' && this.detail.order_id) {
-                window.dispatchEvent(new CustomEvent('open-order-modal', {
-                    detail: { orderId: this.detail.order_id }
-                }));
+                window.dispatchEvent(new CustomEvent('open-order-modal', { detail: { orderId: this.detail.order_id } }));
             }
 
             await fetch(`/appointments/${this.detail.id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
                 body: JSON.stringify({ status }),
             });
 
-            // Atualiza o card na grade sem reload
             const card = document.querySelector(`[data-apt-id="${this.detail.id}"]`);
             if (card) {
-                const bgMap     = { scheduled:'bg-blue-100',   confirmed:'bg-green-100', completed:'bg-gray-100',  cancelled:'bg-red-100'   };
+                const bgMap     = { scheduled:'bg-blue-100',    confirmed:'bg-green-100', completed:'bg-gray-100', cancelled:'bg-red-100'   };
                 const borderMap = { scheduled:'border-blue-300', confirmed:'border-green-300', completed:'border-gray-300', cancelled:'border-red-300' };
-                const textMap   = { scheduled:'text-blue-700', confirmed:'text-green-700', completed:'text-gray-600', cancelled:'text-red-600' };
+                const textMap   = { scheduled:'text-blue-700',  confirmed:'text-green-700', completed:'text-gray-600', cancelled:'text-red-600' };
+                const labelMap  = { scheduled:'Agendado', confirmed:'Confirmado', completed:'Finalizado', cancelled:'Cancelado' };
 
                 Object.values(bgMap).forEach(c => card.classList.remove(c));
                 Object.values(borderMap).forEach(c => card.classList.remove(c));
                 card.classList.add(bgMap[status] ?? 'bg-gray-100', borderMap[status] ?? 'border-gray-300');
 
-                const labelMap = { scheduled:'Agendado', confirmed:'Confirmado', completed:'Finalizado', cancelled:'Cancelado' };
                 card.querySelectorAll('p, span[data-status-label]').forEach(el => {
                     Object.values(textMap).forEach(c => el.classList.remove(c));
                     if (textMap[status]) el.classList.add(textMap[status]);
@@ -753,46 +1160,24 @@ function agenda() {
             this.confirmDelete = false;
             await fetch(`/appointments/${this.detail.id}`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
                 body: JSON.stringify({ delete_recurrence: this.deleteAll }),
             });
             this.showDetail = false;
             window.location.reload();
         },
 
+        // ── Helpers de status ─────────────────────────────────────────────
         statusLabel(status) {
-            const map = {
-                scheduled: 'Agendado',
-                confirmed: 'Confirmado',
-                completed: 'Finalizado',
-                cancelled: 'Cancelado',
-            };
-            return map[status] ?? status;
+            return { scheduled:'Agendado', confirmed:'Confirmado', completed:'Finalizado', cancelled:'Cancelado' }[status] ?? status;
         },
-
         statusBg(status) {
-            const map = {
-                scheduled: 'bg-blue-400',
-                confirmed: 'bg-green-400',
-                completed: 'bg-gray-400',
-                cancelled: 'bg-red-400',
-            };
-            return map[status] ?? 'bg-gray-300';
+            return { scheduled:'bg-blue-400', confirmed:'bg-green-400', completed:'bg-gray-400', cancelled:'bg-red-400' }[status] ?? 'bg-gray-300';
         },
-
         statusBadge(status) {
-            const map = {
-                scheduled: 'bg-blue-100 text-blue-700',
-                confirmed: 'bg-green-100 text-green-700',
-                completed: 'bg-gray-100 text-gray-600',
-                cancelled: 'bg-red-100 text-red-600',
-            };
-            return map[status] ?? 'bg-gray-100 text-gray-500';
+            return { scheduled:'bg-blue-100 text-blue-700', confirmed:'bg-green-100 text-green-700', completed:'bg-gray-100 text-gray-600', cancelled:'bg-red-100 text-red-600' }[status] ?? 'bg-gray-100 text-gray-500';
         },
-    }
+    };
 }
 </script>
 

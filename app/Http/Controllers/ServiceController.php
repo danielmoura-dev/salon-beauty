@@ -26,7 +26,11 @@ class ServiceController extends Controller
             'notes'          => ['nullable', 'string', 'max:500'],
         ]);
 
-        Service::create($data);
+        $service = Service::create($data);
+
+        if ($request->expectsJson()) {
+            return response()->json($service->fresh());
+        }
 
         return back()->with('success', 'Serviço cadastrado!');
     }
