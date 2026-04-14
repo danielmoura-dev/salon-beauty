@@ -26,9 +26,8 @@ class ClientController extends Controller
 
     public function search(Request $request)
     {
-        $q       = trim($request->input('q', ''));
-        $page    = max(1, (int) $request->input('page', 1));
-        $perPage = 25;
+        $q    = trim($request->input('q', ''));
+        $page = $request->input('page', '1');
 
         $query = Client::select(['id', 'name', 'phone', 'balance'])->orderBy('name');
 
@@ -39,7 +38,15 @@ class ClientController extends Controller
             });
         }
 
-        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+        // page=all: retorna tudo de uma vez (para carga inicial)
+        if ($page === 'all') {
+            return response()->json([
+                'data'     => $query->get(),
+                'has_more' => false,
+            ]);
+        }
+
+        $paginator = $query->paginate(25, ['*'], 'page', max(1, (int) $page));
 
         return response()->json([
             'data'     => $paginator->items(),

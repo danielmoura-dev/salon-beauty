@@ -251,7 +251,7 @@
                     <div class="h-64 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50"
                          @scroll="onListScroll($event)">
                         <div class="px-1 py-1">
-                            <template x-for="client in clients" :key="client.id">
+                            <template x-for="client in visibleClients()" :key="client.id">
                                 <button type="button" @click="selectClient(client)"
                                     class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-white hover:shadow-sm transition-all text-left">
                                     <div class="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0"
@@ -272,7 +272,7 @@
                                 </button>
                             </template>
 
-                            {{-- Spinner ao carregar mais --}}
+                            {{-- Spinner: carregando lista inicial --}}
                             <div x-show="clientLoading" class="flex justify-center py-4">
                                 <svg class="animate-spin h-5 w-5 text-primary-400" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -280,7 +280,7 @@
                                 </svg>
                             </div>
 
-                            <p x-show="!clientLoading && clients.length === 0"
+                            <p x-show="!clientLoading && filteredClients().length === 0"
                                class="text-center text-sm text-gray-400 py-8">
                                 Nenhum cliente encontrado.
                             </p>
@@ -320,35 +320,38 @@ function ordersPage() {
         vendasTab:        'item',
 
         // picker de cliente
+        allClients:       [],   // lista completa carregada uma vez
         clientSearch:     '',
-        clientSearchTimer: null,
-        clients:          [],
-        clientPage:       1,
-        clientHasMore:    true,
+        displayLimit:     50,   // quantos nós no DOM por vez
         clientLoading:    false,
         selectedClient:   null,
         selectedClientId: null,
 
-        async fetchClients(reset = false) {
-            if (this.clientLoading) return;
-            if (!reset && !this.clientHasMore) return;
+        // Filtra in-memory (instantâneo)
+        filteredClients() {
+            const q = this.clientSearch.trim().toLowerCase();
+            if (!q) return this.allClients;
+            return this.allClients.filter(c =>
+                c.name.toLowerCase().includes(q) ||
+                (c.phone && c.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '')))
+            );
+        },
 
-            if (reset) {
-                this.clients      = [];
-                this.clientPage   = 1;
-                this.clientHasMore = true;
-            }
+        // Slice dos filtrados para limitar nós no DOM
+        visibleClients() {
+            return this.filteredClients().slice(0, this.displayLimit);
+        },
 
+        // Busca todos os clientes uma única vez
+        async loadAllClients() {
+            if (this.allClients.length || this.clientLoading) return;
             this.clientLoading = true;
             try {
-                const params = new URLSearchParams({ q: this.clientSearch, page: this.clientPage });
-                const res    = await fetch(`/clients/search?${params}`, {
+                const res  = await fetch('/clients/search?q=&page=all', {
                     headers: { Accept: 'application/json' },
                 });
                 const json = await res.json();
-                this.clients.push(...json.data);
-                this.clientHasMore = json.has_more;
-                this.clientPage++;
+                this.allClients = json.data;
             } catch (_) {
                 // silencioso
             } finally {
@@ -357,21 +360,23 @@ function ordersPage() {
         },
 
         onSearchInput() {
-            clearTimeout(this.clientSearchTimer);
-            this.clientSearchTimer = setTimeout(() => this.fetchClients(true), 350);
+            this.displayLimit = 50; // reset ao buscar
         },
 
+        // Expande o slice ao chegar perto do fim
         onListScroll(event) {
             const el = event.target;
-            if (!this.clientHasMore || this.clientLoading) return;
-            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
-                this.fetchClients(false);
+            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) {
+                const total = this.filteredClients().length;
+                if (this.displayLimit < total) {
+                    this.displayLimit = Math.min(this.displayLimit + 50, total);
+                }
             }
         },
 
         openNew() {
             this.showNew = true;
-            this.$nextTick(() => this.fetchClients(true));
+            this.loadAllClients();
         },
 
         selectClient(client) {
@@ -384,9 +389,7 @@ function ordersPage() {
             this.selectedClient   = null;
             this.selectedClientId = null;
             this.clientSearch     = '';
-            this.clients          = [];
-            this.clientPage       = 1;
-            this.clientHasMore    = true;
+            this.displayLimit     = 50;
         },
     }
 }
