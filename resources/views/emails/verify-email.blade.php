@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redefinição de Senha — Salon Beauty</title>
+    <title>Confirme seu E-mail — Salon Beauty</title>
 </head>
 <body style="margin:0;padding:0;background-color:#eaf6f5;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
 
@@ -18,12 +18,10 @@
                 <tr>
                     <td style="background:linear-gradient(135deg,#2FA7A0 0%,#1c6e69 100%);
                                 border-radius:20px 20px 0 0;padding:40px 40px 32px;text-align:center;">
-                        {{-- Logo --}}
                         <img src="{{ url('images/logo-email.png') }}"
                              alt="Salon Beauty"
                              width="200"
                              style="max-width:200px;max-height:80px;display:inline-block;">
-                        {{-- Fallback caso a imagem não carregue --}}
                         <div style="margin-top:10px;">
                             <span style="color:#ffffff;font-size:11px;letter-spacing:3px;
                                          text-transform:uppercase;opacity:0.75;">
@@ -36,7 +34,7 @@
                 {{-- ===== BARRA DECORATIVA ===== --}}
                 <tr>
                     <td style="height:5px;
-                                background:linear-gradient(90deg,#A6789B 0%,#2FA7A0 100%);"></td>
+                                background:linear-gradient(90deg,#2FA7A0 0%,#A6789B 100%);"></td>
                 </tr>
 
                 {{-- ===== CORPO ===== --}}
@@ -58,7 +56,7 @@
                                                 line-height:72px;
                                                 font-size:32px;
                                                 text-align:center;">
-                                        🔐
+                                        ✉️
                                     </div>
                                 </td>
                             </tr>
@@ -66,26 +64,26 @@
 
                         <h1 style="color:#1c6e69;font-size:24px;font-weight:700;
                                    margin:0 0 8px;text-align:center;letter-spacing:-0.3px;">
-                            Redefinição de Senha
+                            Confirme seu E-mail
                         </h1>
                         <p style="color:#6b7280;font-size:14px;text-align:center;margin:0 0 32px;">
-                            Sua segurança é nossa prioridade
+                            Estamos quase lá! Só mais um passo.
                         </p>
 
                         <p style="color:#374151;font-size:16px;line-height:1.7;margin:0 0 16px;">
                             Olá, <strong style="color:#2FA7A0;">{{ $user->name }}</strong>!
                         </p>
                         <p style="color:#4b5563;font-size:15px;line-height:1.7;margin:0 0 32px;">
-                            Recebemos uma solicitação para redefinir a senha da sua conta no
-                            <strong style="color:#1c6e69;">Salon Beauty</strong>.
-                            Clique no botão abaixo para criar uma nova senha segura:
+                            Bem-vindo(a) ao <strong style="color:#1c6e69;">Salon Beauty</strong>!
+                            Para ativar sua conta e aproveitar todos os recursos de gestão do seu salão,
+                            confirme seu endereço de e-mail clicando no botão abaixo:
                         </p>
 
                         {{-- Botão CTA --}}
                         <table width="100%" cellpadding="0" cellspacing="0">
                             <tr>
                                 <td align="center" style="padding:4px 0 36px;">
-                                    <a href="{{ $link }}"
+                                    <a href="{{ $verifyUrl }}"
                                        style="display:inline-block;
                                               background:linear-gradient(135deg,#2FA7A0 0%,#1c6e69 100%);
                                               color:#ffffff;
@@ -96,7 +94,7 @@
                                               border-radius:50px;
                                               letter-spacing:0.3px;
                                               box-shadow:0 4px 16px rgba(47,167,160,0.35);">
-                                        Redefinir minha Senha
+                                        Confirmar meu E-mail
                                     </a>
                                 </td>
                             </tr>
@@ -110,9 +108,20 @@
                                             border-radius:0 12px 12px 0;
                                             padding:16px 20px;">
                                     <p style="color:#5a3d52;font-size:14px;line-height:1.6;margin:0;">
-                                        ⏱&nbsp; Este link é válido por <strong>60 minutos</strong>.
-                                        Se você não solicitou a redefinição, ignore este e-mail —
-                                        sua senha permanece a mesma e nenhuma alteração será feita.
+                                        ⏱&nbsp; Este link de confirmação expira em <strong>60 minutos</strong>.
+                                        Se você não criou uma conta no Salon Beauty, ignore este e-mail.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        {{-- Separador --}}
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="padding:32px 0 0;">
+                                    <p style="color:#4b5563;font-size:14px;line-height:1.7;margin:0;">
+                                        Após confirmar seu e-mail, você poderá acessar o painel completo
+                                        e começar a gerenciar seu salão com praticidade. 💇‍♀️✨
                                     </p>
                                 </td>
                             </tr>
@@ -132,10 +141,10 @@
                             Se o botão acima não funcionar, copie e cole o link abaixo no seu navegador:
                         </p>
                         <p style="margin:0 0 20px;">
-                            <a href="{{ $link }}"
+                            <a href="{{ $verifyUrl }}"
                                style="color:#2FA7A0;font-size:12px;word-break:break-all;
                                       text-decoration:none;">
-                                {{ $link }}
+                                {{ $verifyUrl }}
                             </a>
                         </p>
                         <table width="100%" cellpadding="0" cellspacing="0">
