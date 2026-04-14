@@ -1,6 +1,7 @@
 @extends('layouts.auth')
 @section('title', 'Criar Conta — Salon Beauty')
 @section('heading', 'Crie sua conta grátis')
+{{-- TESTE --}}
 
 @section('content')
 <form method="POST" action="{{ route('register') }}" class="space-y-4" x-data="{ loading: false }" @submit="loading = true">
