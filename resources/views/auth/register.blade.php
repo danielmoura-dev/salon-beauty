@@ -1,9 +1,9 @@
 @extends('layouts.auth')
 @section('title', 'Criar Conta — Salon Beauty')
 @section('heading', 'Crie sua conta grátis')
-{{-- TESTE --}}
 
 @section('content')
+<p style="color: red; font-size: 48px; font-weight: bold; text-align: center;">TESTE</p>
 <form method="POST" action="{{ route('register') }}" class="space-y-4" x-data="{ loading: false }" @submit="loading = true">
     @csrf
 
