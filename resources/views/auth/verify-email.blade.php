@@ -21,12 +21,12 @@
         @csrf
         <input type="hidden" name="code" id="codeInput">
 
-        <div class="flex justify-center gap-3 mb-6">
+        <div class="flex justify-center gap-2 mb-6">
             @for ($i = 0; $i < 6; $i++)
                 <input type="text"
                        inputmode="numeric"
                        maxlength="1"
-                       class="code-digit w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-xl
+                       class="code-digit w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-300 rounded-xl
                               focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-colors
                               @error('code') border-red-400 @enderror"
                        autocomplete="off">
