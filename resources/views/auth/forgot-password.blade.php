@@ -1,5 +1,5 @@
 @extends('layouts.auth')
-@section('title', 'Recuperar senha — Gestão Beauty')
+@section('title', 'Recuperar senha — Salon Beauty')
 @section('heading', 'Recuperar senha')
 
 @section('content')

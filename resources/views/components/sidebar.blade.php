@@ -1,6 +1,6 @@
 {{-- Logo --}}
 <div class="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-    <img src="{{ asset('images/logo2.png') }}" alt="Gestão Beauty" class="h-14 w-auto">
+    <img src="{{ asset('images/logo2.png') }}" alt="Salon Beauty" class="h-14 w-auto">
 
     <button @click="sidebarOpen = false" class="ml-auto text-gray-400 hover:text-gray-600 lg:hidden">
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

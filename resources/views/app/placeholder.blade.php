@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', $title . ' — Gestão Beauty')
+@section('title', $title . ' — Salon Beauty')
 
 @section('content')
 <div class="flex flex-col items-center justify-center py-24 text-center">

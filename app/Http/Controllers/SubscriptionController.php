@@ -47,7 +47,7 @@ class SubscriptionController extends Controller
         $client = new PreApprovalClient();
 
         $preApproval = $client->create([
-            'reason'              => 'Gestão Beauty — Plano Full',
+            'reason'              => 'Salon Beauty — Plano Full',
             'auto_recurring'      => [
                 'frequency'       => 1,
                 'frequency_type'  => 'months',

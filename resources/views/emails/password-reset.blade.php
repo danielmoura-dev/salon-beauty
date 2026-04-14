@@ -20,7 +20,7 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>Gestão Beauty</h1>
+            <h1>Salon Beauty</h1>
         </div>
         <div class="body">
             <p>Olá, <strong>{{ $user->name }}</strong>!</p>

@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Clientes — Gestão Beauty')
+@section('title', 'Clientes — Salon Beauty')
 
 @section('content')
 <div class="space-y-5" x-data="clientsPage()">

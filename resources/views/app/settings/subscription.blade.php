@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Assinar — Gestão Beauty')
+@section('title', 'Assinar — Salon Beauty')
 
 @section('content')
 <div class="max-w-lg mx-auto space-y-6">
 
     <div class="text-center">
         <h1 class="text-2xl font-bold text-gray-900">Plano Full</h1>
-        <p class="text-gray-500 mt-1">Acesso completo a todos os módulos do Gestão Beauty</p>
+        <p class="text-gray-500 mt-1">Acesso completo a todos os módulos do Salon Beauty</p>
     </div>
 
     {{-- Card do plano --}}

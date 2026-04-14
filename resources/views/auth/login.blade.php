@@ -1,5 +1,5 @@
 @extends('layouts.auth')
-@section('title', 'Entrar — Gestão Beauty')
+@section('title', 'Entrar — Salon Beauty')
 @section('heading', 'Acesse sua conta')
 
 @section('content')

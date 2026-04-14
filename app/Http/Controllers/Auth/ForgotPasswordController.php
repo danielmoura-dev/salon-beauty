@@ -47,7 +47,7 @@ class ForgotPasswordController extends Controller
         Mail::send([], [], function ($message) use ($user, $link) {
             $message
                 ->to($user->email, $user->name)
-                ->subject('Redefinição de senha — Gestão Beauty')
+                ->subject('Redefinição de senha — Salon Beauty')
                 ->html(view('emails.password-reset', ['user' => $user, 'link' => $link])->render());
         });
 

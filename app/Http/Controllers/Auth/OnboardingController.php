@@ -37,6 +37,6 @@ class OnboardingController extends Controller
 
         $user->update($data);
 
-        return redirect()->route('dashboard')->with('success', 'Bem-vindo ao Gestão Beauty!');
+        return redirect()->route('dashboard')->with('success', 'Bem-vindo ao Salon Beauty!');
     }
 }

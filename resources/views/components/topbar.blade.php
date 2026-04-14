@@ -10,7 +10,7 @@
 
     {{-- Logo centralizada no mobile --}}
     <div class="flex-1 flex justify-center">
-        <img src="{{ asset('images/logo2.png') }}" alt="Gestão Beauty" class="h-9 w-auto">
+        <img src="{{ asset('images/logo2.png') }}" alt="Salon Beauty" class="h-9 w-auto">
     </div>
 
     {{-- Avatar do usuário --}}

@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Agenda — Gestão Beauty')
+@section('title', 'Agenda — Salon Beauty')
 
 @section('content')
 <div x-data="agenda()" class="-m-4 sm:-m-6 lg:-m-8">

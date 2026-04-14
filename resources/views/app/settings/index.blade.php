@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Configurações — Gestão Beauty')
+@section('title', 'Configurações — Salon Beauty')
 
 @section('content')
 <div class="max-w-2xl mx-auto space-y-6">
