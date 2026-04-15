@@ -95,8 +95,21 @@
             @foreach ($professionals as $professional)
                 @php
                     $profAppointments = $appointments[$professional->id] ?? collect();
-                    $unavailableTopPx    = ($endHour - $startHour) * 2 * 48;
-                    $unavailableHeightPx = (24 - $endHour) * 2 * 48;
+
+                    // Horário por profissional (usa work_schedule se disponível)
+                    $ws        = $professional->work_schedule[$dayOfWeek] ?? null;
+                    $profOn    = $ws ? (bool)($ws['enabled'] ?? true) : true;
+                    $profStart = $profOn ? (int)explode(':', $ws['start'] ?? sprintf('%02d:00', $startHour))[0] : 0;
+                    $profEnd   = $profOn ? (int)explode(':', $ws['end']   ?? sprintf('%02d:00', $endHour))[0]   : 0;
+
+                    // Bloco superior indisponível (antes do início do profissional)
+                    $topUnavailTopPx = 0;
+                    $topUnavailH     = max(0, $profStart - $startHour);
+                    $topUnavailPx    = $topUnavailH * 2 * 48;
+
+                    // Bloco inferior indisponível (após fim do profissional)
+                    $botUnavailTopPx = ($profEnd - $startHour) * 2 * 48;
+                    $botUnavailPx    = (24 - $profEnd) * 2 * 48;
                 @endphp
 
                 <div class="w-64 sm:w-80 shrink-0 border-r border-gray-300 last:border-r-0">
@@ -108,7 +121,10 @@
                         @foreach ($slots as $slot)
                             @php
                                 [$slotH2, $slotM2] = explode(':', $slot);
-                                $isUnavailable = (int)$slotH2 * 60 + (int)$slotM2 >= $endHour * 60;
+                                $slotMin = (int)$slotH2 * 60 + (int)$slotM2;
+                                $isUnavailable = !$profOn
+                                    || $slotMin < $profStart * 60
+                                    || $slotMin >= $profEnd * 60;
                                 $isHour = str_ends_with($slot, ':00');
                             @endphp
                             <div
@@ -124,12 +140,24 @@
                             ></div>
                         @endforeach
 
-                        {{-- Bloco Indisponível --}}
-                        @if ($endHour < 24)
+                        {{-- Bloco indisponível superior (antes do horário do prof) --}}
+                        @if ($topUnavailPx > 0)
+                            <div class="absolute left-1 right-1 rounded-xl bg-gray-100 border border-gray-300 flex items-center justify-center z-[1] pointer-events-none"
+                                 style="top: 0px; height: {{ $topUnavailPx - 4 }}px;">
+                                <p class="text-xs text-gray-400 font-medium">Indisponível</p>
+                            </div>
+                        @endif
+
+                        {{-- Bloco indisponível inferior (após fim do horário ou dia off) --}}
+                        @if (!$profOn)
+                            <div class="absolute left-1 right-1 top-1 bottom-1 rounded-xl bg-gray-100 border border-gray-300 flex flex-col items-center justify-center z-[1] pointer-events-none">
+                                <p class="text-xs font-bold text-gray-400">Folga</p>
+                            </div>
+                        @elseif ($profEnd < 24)
                             <div class="absolute left-1 right-1 rounded-xl bg-gray-100 border border-gray-300 flex flex-col items-center justify-start pt-3 z-[1] pointer-events-none"
-                                 style="top: {{ $unavailableTopPx }}px; height: {{ $unavailableHeightPx - 4 }}px;">
+                                 style="top: {{ $botUnavailTopPx }}px; height: {{ $botUnavailPx - 4 }}px;">
                                 <p class="text-xs font-bold text-gray-400 tabular-nums">
-                                    {{ sprintf('%02d:00', $endHour) }} – 00:00
+                                    {{ sprintf('%02d:00', $profEnd) }} – 00:00
                                 </p>
                                 <p class="text-xs text-gray-400 font-medium mt-0.5">Indisponível</p>
                             </div>

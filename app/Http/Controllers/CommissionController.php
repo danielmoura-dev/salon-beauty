@@ -107,45 +107,41 @@ class CommissionController extends Controller
     public function pay(Request $request, Professional $professional)
     {
         $data = $request->validate([
-            'period_type' => ['required', 'in:accumulated,custom'],
-            'date_from'   => ['nullable', 'date', 'required_if:period_type,custom'],
-            'date_to'     => ['required', 'date'],
-            'notes'       => ['nullable', 'string', 'max:500'],
+            'period_type'   => ['required', 'in:accumulated,custom'],
+            'date_from'     => ['nullable', 'date', 'required_if:period_type,custom'],
+            'date_to'       => ['required', 'date'],
+            'notes'         => ['nullable', 'string', 'max:500'],
+            'item_ids'      => ['nullable', 'array'],
+            'item_ids.*'    => ['string'],
+            'voucher_ids'   => ['nullable', 'array'],
+            'voucher_ids.*' => ['string'],
         ]);
 
-        $periodEnd   = Carbon::parse($data['date_to'])->endOfDay();
-        $periodStart = $data['period_type'] === 'custom' && $data['date_from']
-            ? Carbon::parse($data['date_from'])->startOfDay()
+        $periodStart = $data['period_type'] === 'custom' && ($data['date_from'] ?? null)
+            ? Carbon::parse($data['date_from'])->toDateString()
             : null;
 
-        $query = OrderItem::where('professional_id', $professional->id)
+        $items = OrderItem::whereIn('id', $data['item_ids'] ?? [])
+            ->where('professional_id', $professional->id)
             ->whereNull('commission_paid_at')
-            ->where('has_commission', true)
-            ->whereHas('order', fn($q) => $q->where('status', 'closed'))
-            ->whereHas('order', fn($q) => $q->where('created_at', '<=', $periodEnd));
+            ->get();
 
-        if ($periodStart) {
-            $query->whereHas('order', fn($q) => $q->where('created_at', '>=', $periodStart));
-        }
-
-        $items = $query->get();
+        $vouchers = ProfessionalVoucher::whereIn('id', $data['voucher_ids'] ?? [])
+            ->where('professional_id', $professional->id)
+            ->whereNull('commission_payment_id')
+            ->get();
 
         $totalServices = $items->where('type', 'service')->sum(fn($i) => $i->commissionValue());
         $totalProducts = $items->where('type', 'product')->sum(fn($i) => $i->commissionValue());
         $totalOthers   = $items->where('type', 'other')->sum(fn($i) => $i->commissionValue());
-
-        $vouchers = ProfessionalVoucher::where('professional_id', $professional->id)
-            ->whereNull('commission_payment_id')
-            ->get();
-
         $totalVouchers = $vouchers->sum('amount');
         $netAmount     = max(0, $totalServices + $totalProducts + $totalOthers - $totalVouchers);
 
         $payment = CommissionPayment::create([
             'tenant_id'       => auth()->user()->tenant_id,
             'professional_id' => $professional->id,
-            'period_start'    => $periodStart?->toDateString(),
-            'period_end'      => Carbon::parse($data['date_to'])->toDateString(),
+            'period_start'    => $periodStart,
+            'period_end'      => $data['date_to'],
             'total_services'  => $totalServices,
             'total_products'  => $totalProducts,
             'total_others'    => $totalOthers,

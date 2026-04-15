@@ -3,15 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\Professional;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ProfessionalController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $professionals = Professional::orderBy('name')->get();
-        return view('app.professionals.index', compact('professionals'));
+        $professionals = Professional::orderBy('name')
+            ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            ->with(['services' => fn($q) => $q->withPivot('commission_pct')])
+            ->get();
+
+        $services = Service::where('active', true)
+            ->with('category')
+            ->orderBy('name')
+            ->get(['id', 'name', 'commission_pct', 'category_id']);
+
+        $tenant = auth()->user()->tenant;
+
+        return view('app.professionals.index', compact('professionals', 'services', 'tenant'));
     }
 
     public function store(Request $request)
@@ -20,21 +32,26 @@ class ProfessionalController extends Controller
             'name'                => ['required', 'string', 'max:150'],
             'specialty'           => ['nullable', 'string', 'max:100'],
             'birthday'            => ['nullable', 'date'],
-            'commission_pct'      => ['nullable', 'numeric', 'min:0', 'max:100'],
             'show_on_agenda'      => ['boolean'],
             'receives_commission' => ['boolean'],
             'photo'               => ['nullable', 'image', 'max:2048'],
+            'work_schedule'       => ['nullable', 'string'],
         ]);
 
         $data['show_on_agenda']      = $request->boolean('show_on_agenda', true);
         $data['receives_commission'] = $request->boolean('receives_commission', true);
+
+        if ($request->filled('work_schedule')) {
+            $data['work_schedule'] = json_decode($request->work_schedule, true);
+        }
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')
                 ->store('professionals/' . auth()->user()->tenant_id, 'public');
         }
 
-        Professional::create($data);
+        $professional = Professional::create($data);
+        $this->syncServiceCommissions($request, $professional);
 
         return back()->with('success', 'Profissional cadastrado!');
     }
@@ -45,14 +62,18 @@ class ProfessionalController extends Controller
             'name'                => ['required', 'string', 'max:150'],
             'specialty'           => ['nullable', 'string', 'max:100'],
             'birthday'            => ['nullable', 'date'],
-            'commission_pct'      => ['nullable', 'numeric', 'min:0', 'max:100'],
             'show_on_agenda'      => ['boolean'],
             'receives_commission' => ['boolean'],
             'photo'               => ['nullable', 'image', 'max:2048'],
+            'work_schedule'       => ['nullable', 'string'],
         ]);
 
         $data['show_on_agenda']      = $request->boolean('show_on_agenda');
         $data['receives_commission'] = $request->boolean('receives_commission');
+
+        if ($request->filled('work_schedule')) {
+            $data['work_schedule'] = json_decode($request->work_schedule, true);
+        }
 
         if ($request->hasFile('photo')) {
             if ($professional->photo) Storage::disk('public')->delete($professional->photo);
@@ -61,6 +82,7 @@ class ProfessionalController extends Controller
         }
 
         $professional->update($data);
+        $this->syncServiceCommissions($request, $professional);
 
         return back()->with('success', 'Profissional atualizado!');
     }
@@ -70,5 +92,19 @@ class ProfessionalController extends Controller
         if ($professional->photo) Storage::disk('public')->delete($professional->photo);
         $professional->delete();
         return back()->with('success', 'Profissional removido.');
+    }
+
+    private function syncServiceCommissions(Request $request, Professional $professional): void
+    {
+        $custom = $request->input('custom_commissions', []);
+        $syncData = [];
+
+        foreach ($custom as $serviceId => $pct) {
+            if ($pct !== null && $pct !== '') {
+                $syncData[$serviceId] = ['commission_pct' => (float) $pct];
+            }
+        }
+
+        $professional->services()->sync($syncData);
     }
 }

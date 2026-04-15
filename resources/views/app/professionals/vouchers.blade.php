@@ -7,11 +7,11 @@
     {{-- Cabeçalho --}}
     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-            <div class="flex items-center gap-2 mb-1">
-                <a href="{{ route('professionals') }}" class="text-sm text-gray-400 hover:text-gray-600">Profissionais</a>
-                <span class="text-gray-300">/</span>
-                <span class="text-sm text-gray-700 font-medium">Vales</span>
-            </div>
+            <a href="{{ route('professionals') }}"
+               class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mb-1">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+                Profissionais
+            </a>
             <h1 class="text-2xl font-bold text-gray-900">Vales</h1>
         </div>
         <button @click="openCreate()"
