@@ -14,18 +14,28 @@
             </a>
             <h1 class="text-2xl font-bold text-gray-900">Comissões</h1>
         </div>
-        <div class="sm:ml-auto flex gap-2">
-            <button @click="tab = 'pending'" :class="tab === 'pending' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 border border-gray-200'"
-                class="px-4 py-2 rounded-xl text-sm font-medium transition-colors">A Pagar</button>
-            <button @click="tab = 'history'" :class="tab === 'history' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 border border-gray-200'"
-                class="px-4 py-2 rounded-xl text-sm font-medium transition-colors">Histórico</button>
+        <div class="sm:ml-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <select x-model="filterProfId"
+                class="rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 py-2 pl-3 pr-8">
+                <option value="">Todos os profissionais</option>
+                @foreach ($professionals as $prof)
+                    <option value="{{ $prof->id }}">{{ $prof->name }}</option>
+                @endforeach
+            </select>
+            <div class="flex gap-2">
+                <button @click="tab = 'pending'" :class="tab === 'pending' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 border border-gray-200'"
+                    class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-medium transition-colors">A Pagar</button>
+                <button @click="tab = 'history'" :class="tab === 'history' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 border border-gray-200'"
+                    class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-medium transition-colors">Histórico</button>
+            </div>
         </div>
     </div>
 
     {{-- Aba: A Pagar --}}
     <div x-show="tab === 'pending'" class="space-y-2">
         @forelse ($professionals as $prof)
-            <div class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 px-4 py-3 shadow-sm">
+            <div x-show="filterProfId === '' || filterProfId === '{{ $prof->id }}'"
+                 class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 px-4 py-3 shadow-sm">
                 @if ($prof->photo)
                     <img src="{{ Storage::url($prof->photo) }}" class="h-11 w-11 rounded-full object-cover shrink-0" alt="">
                 @else
@@ -58,7 +68,8 @@
     {{-- Aba: Histórico --}}
     <div x-show="tab === 'history'" class="space-y-2">
         @forelse ($history as $payment)
-            <div class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 px-4 py-3 shadow-sm">
+            <div x-show="filterProfId === '' || filterProfId === '{{ $payment->professional_id }}'"
+                 class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 px-4 py-3 shadow-sm">
                 @if ($payment->professional->photo)
                     <img src="{{ Storage::url($payment->professional->photo) }}" class="h-10 w-10 rounded-full object-cover shrink-0" alt="">
                 @else
@@ -327,6 +338,7 @@
 function commissionsPage() {
     return {
         tab: 'pending',
+        filterProfId: '',
         modalOpen: false,
         prof: null,
         periodType: 'accumulated',
