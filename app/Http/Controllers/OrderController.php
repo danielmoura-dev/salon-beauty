@@ -13,21 +13,17 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $date   = $request->date ? Carbon::parse($request->date) : Carbon::today();
-        $status = $request->status ?? 'open';
+        $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
 
-        $query = Order::with(['client', 'items', 'payments'])
-            ->when($status !== 'all', fn($q) => $q->where('status', $status))
-            ->when($request->boolean('show_pending', true), function ($q) use ($date, $status) {
-                // Inclui comandas abertas de dias anteriores se configurado
-                if ($status === 'open') {
-                    return $q->whereDate('created_at', '<=', $date);
-                }
-                return $q->whereDate('created_at', $date);
-            }, fn($q) => $q->whereDate('created_at', $date))
-            ->orderByDesc('created_at');
-
-        $orders = $query->get();
+        // Carrega tudo de uma vez: todas as comandas do dia + abertas de dias anteriores
+        // O filtro de status (Abertas/Fechadas/Todas) é feito client-side pelo Alpine
+        $orders = Order::with(['client', 'items', 'payments'])
+            ->where(function ($q) use ($date) {
+                $q->whereDate('created_at', $date)
+                  ->orWhere(fn($q2) => $q2->where('status', 'open')->whereDate('created_at', '<', $date));
+            })
+            ->orderByDesc('created_at')
+            ->get();
 
         // Resumo financeiro do dia
         $allTodayOrders = Order::with(['items', 'payments'])
@@ -68,8 +64,12 @@ class OrderController extends Controller
         $services      = Service::where('active', true)->orderBy('name')->get();
         $products      = Product::where('active', true)->where('for_sale', true)->orderBy('name')->get();
 
+        $openCount   = $orders->where('status', 'open')->count();
+        $closedCount = $orders->where('status', 'closed')->count();
+
         return view('app.orders.index', compact(
-            'orders', 'date', 'status', 'summary',
+            'orders', 'date', 'summary',
+            'openCount', 'closedCount',
             'professionals', 'services', 'products'
         ));
     }
