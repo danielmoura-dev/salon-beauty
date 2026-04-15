@@ -12,7 +12,9 @@ Route::get('/', fn() => auth()->check()
     ? redirect()->route('dashboard')
     : redirect()->route('login')
 );
+use App\Http\Controllers\CommissionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ProfessionalController;
@@ -119,6 +121,16 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::post('/professionals', [ProfessionalController::class, 'store'])->name('professionals.store');
     Route::put('/professionals/{professional}', [ProfessionalController::class, 'update'])->name('professionals.update');
     Route::delete('/professionals/{professional}', [ProfessionalController::class, 'destroy'])->name('professionals.destroy');
+
+    // Comissões
+    Route::get('/professionals/commissions', [CommissionController::class, 'index'])->name('professionals.commissions');
+    Route::get('/professionals/{professional}/commissions/detail', [CommissionController::class, 'detail'])->name('professionals.commissions.detail');
+    Route::post('/professionals/{professional}/commissions/pay', [CommissionController::class, 'pay'])->name('professionals.commissions.pay');
+
+    // Vales
+    Route::get('/professionals/vouchers', [VoucherController::class, 'index'])->name('professionals.vouchers');
+    Route::post('/professionals/{professional}/vouchers', [VoucherController::class, 'store'])->name('professionals.vouchers.store');
+    Route::delete('/professionals/vouchers/{voucher}', [VoucherController::class, 'destroy'])->name('professionals.vouchers.destroy');
 
     // Serviços
     Route::get('/services', [ServiceController::class, 'index'])->name('services');

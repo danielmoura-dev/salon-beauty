@@ -7,13 +7,6 @@
     Informe seu e-mail e enviaremos um link para redefinir sua senha.
 </p>
 
-@if (session('success'))
-    <div class="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center gap-2">
-        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-        {{ session('success') }}
-    </div>
-@endif
-
 <form method="POST" action="{{ route('password.email') }}" class="space-y-4">
     @csrf
 

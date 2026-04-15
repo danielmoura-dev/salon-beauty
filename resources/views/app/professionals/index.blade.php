@@ -4,77 +4,100 @@
 @section('content')
 <div class="space-y-5" x-data="profsPage()">
 
-    <div class="flex items-center gap-3">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Profissionais</h1>
             <p class="text-sm text-gray-400">{{ $professionals->count() }} cadastrados</p>
         </div>
-        <button @click="openCreate()"
-            class="ml-auto flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5
-                   text-sm font-semibold text-white hover:bg-primary-700 transition-colors">
-            + Novo Profissional
-        </button>
+        <div class="flex flex-wrap gap-2 sm:ml-auto">
+            <a href="{{ route('professionals.commissions') }}"
+               class="flex items-center gap-2 rounded-xl border border-green-300 bg-green-50 px-4 py-2.5
+                      text-sm font-semibold text-green-700 hover:bg-green-100 transition-colors">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Comissões
+            </a>
+            <a href="{{ route('professionals.vouchers') }}"
+               class="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5
+                      text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a3 3 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z"/>
+                </svg>
+                Vales
+            </a>
+            <button @click="openCreate()"
+                class="flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5
+                       text-sm font-semibold text-white hover:bg-primary-700 transition-colors">
+                + Novo Profissional
+            </button>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div class="space-y-2">
         @forelse ($professionals as $prof)
-            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4">
-                <div class="flex items-start gap-3">
-                    @if ($prof->photo)
-                        <img src="{{ Storage::url($prof->photo) }}"
-                             class="h-12 w-12 rounded-full object-cover shrink-0" alt="">
-                    @else
-                        <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center
-                                    text-primary-500 font-bold shrink-0">
-                            {{ strtoupper(substr($prof->name, 0, 1)) }}
-                        </div>
+            <div class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 px-4 py-3 shadow-sm">
+
+                {{-- Avatar --}}
+                @if ($prof->photo)
+                    <img src="{{ Storage::url($prof->photo) }}"
+                         class="h-11 w-11 rounded-full object-cover shrink-0" alt="">
+                @else
+                    <div class="h-11 w-11 rounded-full bg-primary-100 flex items-center justify-center
+                                text-primary-500 font-bold shrink-0">
+                        {{ strtoupper(substr($prof->name, 0, 1)) }}
+                    </div>
+                @endif
+
+                {{-- Info --}}
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-gray-900 truncate">{{ $prof->name }}</p>
+                    <p class="text-sm text-gray-400 truncate">{{ $prof->specialty ?? 'Sem especialidade' }}</p>
+                </div>
+
+                {{-- Badges --}}
+                <div class="hidden sm:flex gap-1.5 shrink-0">
+                    @if ($prof->show_on_agenda)
+                        <span class="text-xs bg-blue-50 text-blue-600 rounded-full px-2 py-0.5">Na agenda</span>
                     @endif
-                    <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-gray-900 truncate">{{ $prof->name }}</p>
-                        <p class="text-xs text-gray-400">{{ $prof->specialty ?? 'Sem especialidade' }}</p>
-                        <div class="flex flex-wrap gap-1.5 mt-2">
-                            @if ($prof->show_on_agenda)
-                                <span class="text-xs bg-blue-50 text-blue-600 rounded-full px-2 py-0.5">Na agenda</span>
-                            @endif
-                            @if ($prof->receives_commission)
-                                <span class="text-xs bg-green-50 text-green-600 rounded-full px-2 py-0.5">
-                                    {{ $prof->commission_pct }}% comissão
-                                </span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button @click="openEdit({{ $prof->toJson() }})"
-                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-accent-50 text-accent-600 hover:bg-accent-100 transition-colors">
+                    @if ($prof->receives_commission)
+                        <span class="text-xs bg-green-50 text-green-600 rounded-full px-2 py-0.5">
+                            {{ $prof->commission_pct }}% comissão
+                        </span>
+                    @endif
+                </div>
+
+                {{-- Ações --}}
+                <div class="flex items-center gap-2 shrink-0">
+                    <button @click="openEdit({{ $prof->toJson() }})"
+                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-accent-50 text-accent-600 hover:bg-accent-100 transition-colors">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                        </svg>
+                        Editar
+                    </button>
+                    <form id="del-prof-{{ $prof->id }}" method="POST" action="{{ route('professionals.destroy', $prof) }}">
+                        @csrf @method('DELETE')
+                        <button type="button"
+                            @click="$dispatch('open-confirm', { formId: 'del-prof-{{ $prof->id }}', message: 'Remover {{ addslashes($prof->name) }}? Esta ação não pode ser desfeita.' })"
+                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
                             </svg>
-                            Editar
+                            Excluir
                         </button>
-                        <form id="del-prof-{{ $prof->id }}"
-                              method="POST" action="{{ route('professionals.destroy', $prof) }}">
-                            @csrf @method('DELETE')
-                            <button type="button"
-                                @click="$dispatch('open-confirm', { formId: 'del-prof-{{ $prof->id }}', message: 'Remover {{ addslashes($prof->name) }}? Esta ação não pode ser desfeita.' })"
-                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
-                                </svg>
-                                Excluir
-                            </button>
-                        </form>
-                    </div>
+                    </form>
                 </div>
             </div>
         @empty
-            <div class="col-span-full text-center py-16 text-gray-400">
+            <div class="text-center py-16 text-gray-400">
                 <svg class="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.165 2.165 0 011.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.165 2.165 0 001.083-1.838c.005-.352.054-.695.14-1.025m-1.223 2.863l2.077-1.199m0-3.328a4.323 4.323 0 012.068-1.379l5.325-1.628a4.5 4.5 0 012.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.331 4.331 0 0010.607 12m3.736 0l7.794 4.5-.802.215a4.5 4.5 0 01-2.48-.043l-5.326-1.629a4.324 4.324 0 01-2.068-1.379M14.343 12l-2.882 1.664"/></svg>
                 <p class="font-medium">Nenhum profissional cadastrado</p>
             </div>
         @endforelse
     </div>
 
-    {{-- Modal --}}
+    {{-- Modal Criar/Editar --}}
     <x-modal name="professional" title="Profissional">
         <form :action="editing ? `/professionals/${editing.id}` : '{{ route('professionals.store') }}'"
               method="POST" enctype="multipart/form-data" class="space-y-4"
@@ -98,7 +121,6 @@
                 </x-form-field>
             </div>
 
-            {{-- Toggles --}}
             <div class="space-y-3">
                 <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
                     <span class="text-sm font-medium text-gray-700">Mostrar na agenda</span>

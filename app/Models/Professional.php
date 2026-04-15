@@ -30,6 +30,16 @@ class Professional extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function commissionPayments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CommissionPayment::class);
+    }
+
+    public function vouchers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProfessionalVoucher::class);
+    }
+
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class)
