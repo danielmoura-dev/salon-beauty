@@ -14,12 +14,14 @@ class OrderItem extends Model
         'order_id', 'professional_id', 'type',
         'description', 'qty', 'unit_price',
         'commission_pct', 'has_commission',
+        'commission_paid_at', 'commission_payment_id',
     ];
 
     protected $casts = [
-        'unit_price'     => 'decimal:2',
-        'commission_pct' => 'decimal:2',
-        'has_commission' => 'boolean',
+        'unit_price'         => 'decimal:2',
+        'commission_pct'     => 'decimal:2',
+        'has_commission'     => 'boolean',
+        'commission_paid_at' => 'datetime',
     ];
 
     public function order(): BelongsTo
