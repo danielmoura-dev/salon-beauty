@@ -34,7 +34,7 @@ class ProfessionalController extends Controller
             'birthday'            => ['nullable', 'date'],
             'show_on_agenda'      => ['boolean'],
             'receives_commission' => ['boolean'],
-            'photo'               => ['nullable', 'image', 'max:2048'],
+            'photo'               => ['nullable', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,avif', 'max:5120'],
             'work_schedule'       => ['nullable', 'string'],
         ]);
 
@@ -64,7 +64,7 @@ class ProfessionalController extends Controller
             'birthday'            => ['nullable', 'date'],
             'show_on_agenda'      => ['boolean'],
             'receives_commission' => ['boolean'],
-            'photo'               => ['nullable', 'image', 'max:2048'],
+            'photo'               => ['nullable', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,avif', 'max:5120'],
             'work_schedule'       => ['nullable', 'string'],
         ]);
 

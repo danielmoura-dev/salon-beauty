@@ -266,17 +266,37 @@
                                 <div x-show="schedule['{{ $dayKey }}']?.enabled" class="flex gap-3">
                                     <div class="flex-1">
                                         <label class="text-xs text-gray-500 mb-1 block">Início</label>
-                                        <input type="time"
-                                               :value="schedule['{{ $dayKey }}']?.start"
-                                               @change="schedule['{{ $dayKey }}'].start = $event.target.value"
-                                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                        <div class="flex gap-1">
+                                            <input type="time"
+                                                   :value="schedule['{{ $dayKey }}']?.start"
+                                                   @change="schedule['{{ $dayKey }}'].start = $event.target.value"
+                                                   class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                            <button type="button"
+                                                    @click="copyStartToAll('{{ $dayKey }}')"
+                                                    title="Copiar início para todos os dias ativos"
+                                                    class="shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-gray-400 hover:bg-primary-50 hover:text-primary-500 hover:border-primary-200 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="flex-1">
                                         <label class="text-xs text-gray-500 mb-1 block">Fim</label>
-                                        <input type="time"
-                                               :value="schedule['{{ $dayKey }}']?.end"
-                                               @change="schedule['{{ $dayKey }}'].end = $event.target.value"
-                                               class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                        <div class="flex gap-1">
+                                            <input type="time"
+                                                   :value="schedule['{{ $dayKey }}']?.end"
+                                                   @change="schedule['{{ $dayKey }}'].end = $event.target.value"
+                                                   class="flex-1 rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                                            <button type="button"
+                                                    @click="copyEndToAll('{{ $dayKey }}')"
+                                                    title="Copiar fim para todos os dias ativos"
+                                                    class="shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-gray-400 hover:bg-primary-50 hover:text-primary-500 hover:border-primary-200 transition-colors">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -370,6 +390,24 @@ function profsPage() {
             if (this.serviceCommissions[serviceId]) {
                 this.serviceCommissions[serviceId].pct = pct;
             }
+        },
+
+        copyStartToAll(dayKey) {
+            const time = this.schedule[dayKey]?.start;
+            if (!time) return;
+            const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+            days.forEach(d => {
+                if (this.schedule[d]?.enabled) this.schedule[d].start = time;
+            });
+        },
+
+        copyEndToAll(dayKey) {
+            const time = this.schedule[dayKey]?.end;
+            if (!time) return;
+            const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+            days.forEach(d => {
+                if (this.schedule[d]?.enabled) this.schedule[d].end = time;
+            });
         },
     }
 }
