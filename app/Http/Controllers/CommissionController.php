@@ -159,4 +159,23 @@ class CommissionController extends Controller
 
         return back()->with('success', "Pagamento de R$ " . number_format($netAmount, 2, ',', '.') . " registrado para {$professional->name}!");
     }
+
+    public function cancel(CommissionPayment $payment)
+    {
+        // Reverte itens de pedido para pendente
+        OrderItem::where('commission_payment_id', $payment->id)
+            ->update([
+                'commission_paid_at'    => null,
+                'commission_payment_id' => null,
+            ]);
+
+        // Reverte vales para pendente
+        ProfessionalVoucher::where('commission_payment_id', $payment->id)
+            ->update(['commission_payment_id' => null]);
+
+        $professional = $payment->professional;
+        $payment->delete();
+
+        return back()->with('success', "Pagamento cancelado. Valores de {$professional->name} voltaram para pendente.");
+    }
 }

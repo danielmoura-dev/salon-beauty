@@ -126,6 +126,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::get('/professionals/commissions', [CommissionController::class, 'index'])->name('professionals.commissions');
     Route::get('/professionals/{professional}/commissions/detail', [CommissionController::class, 'detail'])->name('professionals.commissions.detail');
     Route::post('/professionals/{professional}/commissions/pay', [CommissionController::class, 'pay'])->name('professionals.commissions.pay');
+    Route::delete('/professionals/commissions/{payment}/cancel', [CommissionController::class, 'cancel'])->name('professionals.commissions.cancel');
 
     // Vales
     Route::get('/professionals/vouchers', [VoucherController::class, 'index'])->name('professionals.vouchers');

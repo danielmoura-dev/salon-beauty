@@ -84,6 +84,19 @@
                     <p class="font-bold text-green-600">R$ {{ number_format($payment->net_amount, 2, ',', '.') }}</p>
                     <p class="text-xs text-gray-400">{{ $payment->created_at->format('d/m/Y') }}</p>
                 </div>
+                <form method="POST"
+                      action="{{ route('professionals.commissions.cancel', $payment) }}"
+                      onsubmit="return confirm('Cancelar este pagamento? Os valores voltarão para pendente.')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit"
+                        class="shrink-0 text-red-400 hover:text-red-600 transition-colors p-1"
+                        title="Cancelar pagamento">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
         @empty
             <div class="text-center py-16 text-gray-400"><p class="font-medium">Nenhum pagamento registrado ainda</p></div>
