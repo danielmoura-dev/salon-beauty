@@ -23,9 +23,14 @@ class CategoryController extends Controller
         return back()->with('success', 'Categoria cadastrada!');
     }
 
-    public function destroy(Category $category)
+    public function destroy(Request $request, Category $category)
     {
         $category->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
         return back()->with('success', 'Categoria removida.');
     }
 }
