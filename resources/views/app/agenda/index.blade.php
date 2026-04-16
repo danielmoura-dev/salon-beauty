@@ -47,10 +47,9 @@
 
     {{-- Cabeçalho dos profissionais: sticky vertical, overflow oculto (sincronizado via JS) --}}
     <div class="sticky top-0 z-20 bg-white border-b border-gray-100 overflow-hidden" id="agenda-header">
-        <div class="flex min-w-max" id="agenda-header-inner">
-            <div class="w-16 shrink-0 border-r border-gray-100 h-12"></div>
+        <div class="flex w-full" id="agenda-header-inner">
             @foreach ($professionals as $professional)
-                <div class="w-64 sm:w-80 shrink-0 h-12 border-r border-gray-100 last:border-r-0
+                <div class="flex-1 min-w-[160px] max-w-[50%] h-12 border-r border-gray-100 last:border-r-0
                             flex items-center justify-center gap-2 px-2">
                     @if ($professional->photo)
                         <img src="{{ Storage::url($professional->photo) }}"
@@ -68,28 +67,10 @@
 
     {{-- Corpo com scroll horizontal --}}
     <div class="overflow-x-auto" id="agenda-body">
-        <div class="min-w-max relative">
+        <div class="w-full relative">
 
             {{-- Corpo da grade --}}
-            <div class="flex">
-
-            {{-- Coluna de horas --}}
-            <div class="sticky left-0 z-20 bg-white border-r border-gray-300 w-16 shrink-0">
-                @foreach ($slots as $slot)
-                    @php
-                        [$slotH, $slotM] = explode(':', $slot);
-                        $slotIsUnavailable = (int)$slotH * 60 + (int)$slotM >= $endHour * 60;
-                    @endphp
-                    <div class="h-12 flex items-center justify-end pr-2">
-                        <span class="text-xs font-medium border rounded px-1 py-0.5 leading-none
-                            {{ $slotIsUnavailable
-                                ? 'text-gray-300 border-gray-200'
-                                : 'text-gray-400 border-gray-300' }}">
-                            {{ $slot }}
-                        </span>
-                    </div>
-                @endforeach
-            </div>
+            <div class="flex w-full">
 
             {{-- Colunas por profissional --}}
             @foreach ($professionals as $professional)
@@ -112,10 +93,26 @@
                     $botUnavailPx    = (24 - $profEnd) * 2 * 48;
                 @endphp
 
-                <div class="w-64 sm:w-80 shrink-0 border-r border-gray-300 last:border-r-0">
+                <div class="flex-1 min-w-[160px] max-w-[50%] border-r border-gray-300 last:border-r-0 flex">
+
+                    {{-- Faixa de horas --}}
+                    <div class="w-14 shrink-0 border-r border-gray-200 bg-white">
+                        @foreach ($slots as $slot)
+                            @php
+                                [$slotH, $slotM] = explode(':', $slot);
+                                $slotIsUnavailable = (int)$slotH * 60 + (int)$slotM >= $endHour * 60;
+                            @endphp
+                            <div class="h-12 flex items-center justify-end pr-2">
+                                <span class="text-xs font-medium border rounded px-1 py-0.5 leading-none
+                                    {{ $slotIsUnavailable ? 'text-gray-300 border-gray-200' : 'text-gray-400 border-gray-300' }}">
+                                    {{ $slot }}
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
 
                     {{-- Slots + Cards --}}
-                    <div class="relative">
+                    <div class="flex-1 relative">
 
                         {{-- Linhas de slot (fundo clicável / indisponível) --}}
                         @foreach ($slots as $slot)
