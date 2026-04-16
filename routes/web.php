@@ -108,6 +108,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::post('/subscription/pix', [SubscriptionController::class, 'pixCheckout'])->name('subscription.pix');
     Route::get('/subscription/pix/status', [SubscriptionController::class, 'pixStatus'])->name('subscription.pix.status');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::get('/subscription/portal', [SubscriptionController::class, 'stripePortal'])->name('subscription.portal');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancelStripe'])->name('subscription.cancel');
 
     // Clientes

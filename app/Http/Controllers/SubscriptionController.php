@@ -8,9 +8,11 @@ use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
+use Stripe\BillingPortal\Session as StripePortalSession;
 
 class SubscriptionController extends Controller
 {
+    // ── Página principal de assinatura ─────────────────────────────
     public function index()
     {
         $tenant       = auth()->user()->tenant->load('subscription');
@@ -43,24 +45,79 @@ class SubscriptionController extends Controller
         return view('app.settings.subscription', compact('tenant', 'subscription', 'pixData'));
     }
 
-    // ── Stripe (cartão recorrente) ──────────────────────────────────
+    // ── Stripe: iniciar checkout ────────────────────────────────────
     public function checkoutStripe(Request $request)
     {
+        $tenant = auth()->user()->tenant->load('subscription');
+
+        // Já tem assinatura Stripe ativa → manda direto pro portal de gestão
+        if ($tenant->subscription?->gateway === 'stripe'
+            && in_array($tenant->subscription?->status, ['active', 'past_due'])
+            && $tenant->stripe_customer_id
+        ) {
+            return $this->redirectToPortal($tenant->stripe_customer_id);
+        }
+
         Stripe::setApiKey(config('services.stripe.secret'));
 
-        $session = StripeSession::create([
+        $params = [
             'mode'                 => 'subscription',
             'payment_method_types' => ['card'],
             'line_items'           => [[
                 'price'    => config('services.stripe.price_id'),
                 'quantity' => 1,
             ]],
-            'metadata'             => ['tenant_id' => auth()->user()->tenant_id],
+            'metadata'             => ['tenant_id' => $tenant->id],
             'success_url'          => route('subscription.success') . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'           => route('settings'),
+            'cancel_url'           => route('subscription.index'),
+            'allow_promotion_codes' => true,
+        ];
+
+        // Reutiliza o customer Stripe existente para evitar duplicatas
+        if ($tenant->stripe_customer_id) {
+            $params['customer'] = $tenant->stripe_customer_id;
+        }
+
+        $session = StripeSession::create($params);
+
+        return redirect($session->url);
+    }
+
+    // ── Stripe: portal de gestão (trocar cartão, cancelar, faturas) ─
+    public function stripePortal()
+    {
+        $tenant = auth()->user()->tenant;
+
+        if (! $tenant->stripe_customer_id) {
+            return back()->with('error', 'Nenhuma assinatura Stripe encontrada.');
+        }
+
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        $session = StripePortalSession::create([
+            'customer'   => $tenant->stripe_customer_id,
+            'return_url' => route('subscription.index'),
         ]);
 
         return redirect($session->url);
+    }
+
+    // ── Stripe: retorno após checkout concluído ─────────────────────
+    public function success(Request $request)
+    {
+        return view('app.settings.subscription-pending');
+    }
+
+    // ── Stripe: cancelar (legacy — agora usa o portal) ──────────────
+    public function cancelStripe(Request $request)
+    {
+        $tenant = auth()->user()->tenant;
+
+        if ($tenant->stripe_customer_id) {
+            return $this->redirectToPortal($tenant->stripe_customer_id);
+        }
+
+        return back()->with('error', 'Nenhuma assinatura Stripe encontrada.');
     }
 
     // ── PIX via Mercado Pago ────────────────────────────────────────
@@ -79,12 +136,11 @@ class SubscriptionController extends Controller
                 'email'      => $tenant->email,
                 'first_name' => $tenant->name,
             ],
-            'external_reference' => $tenant->id,
+            'external_reference' => (string) $tenant->id,
             'notification_url'   => route('webhooks.mercadopago'),
             'date_of_expiration' => now()->addHours(24)->format('Y-m-d\TH:i:s.000P'),
         ]);
 
-        // Guarda pagamento pendente para rastrear via webhook
         Subscription::updateOrCreate(
             ['tenant_id' => $tenant->id, 'gateway' => 'mercadopago'],
             [
@@ -101,7 +157,7 @@ class SubscriptionController extends Controller
         ]);
     }
 
-    // Polling — frontend verifica se o pagamento foi confirmado
+    // ── PIX: polling de status ──────────────────────────────────────
     public function pixStatus()
     {
         $subscription = auth()->user()->tenant->subscription;
@@ -113,27 +169,16 @@ class SubscriptionController extends Controller
         return response()->json(['status' => 'pending']);
     }
 
-    public function success(Request $request)
+    // ── Helpers ────────────────────────────────────────────────────
+    private function redirectToPortal(string $customerId)
     {
-        return view('app.settings.subscription-pending');
-    }
-
-    // ── Cancelar Stripe ────────────────────────────────────────────
-    public function cancelStripe(Request $request)
-    {
-        $subscription = auth()->user()->tenant->subscription;
-
-        if (! $subscription || $subscription->gateway !== 'stripe') {
-            return back()->with('error', 'Nenhuma assinatura Stripe ativa.');
-        }
-
         Stripe::setApiKey(config('services.stripe.secret'));
-        \Stripe\Subscription::update($subscription->gateway_subscription_id, [
-            'cancel_at_period_end' => true,
+
+        $session = StripePortalSession::create([
+            'customer'   => $customerId,
+            'return_url' => route('subscription.index'),
         ]);
 
-        $subscription->update(['status' => 'cancelled']);
-
-        return back()->with('success', 'Assinatura cancelada. Você tem acesso até o fim do período pago.');
+        return redirect($session->url);
     }
 }

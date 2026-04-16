@@ -18,6 +18,7 @@ class Tenant extends Model
         'logo',
         'plan_status',
         'trial_ends_at',
+        'stripe_customer_id',
         'credit_card_fee',
         'debit_card_fee',
         'allow_duplicate_phone',

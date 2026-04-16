@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use App\Models\Tenant;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient;
 use Stripe\Exception\SignatureVerificationException;
+use Stripe\Stripe;
 use Stripe\Webhook as StripeWebhook;
 
 class WebhookController extends Controller
@@ -38,11 +40,12 @@ class WebhookController extends Controller
         Log::info('Stripe event: ' . $event->type);
 
         match ($event->type) {
-            'checkout.session.completed'         => $this->handleStripeCheckoutCompleted($event->data->object),
-            'invoice.paid'                       => $this->handleStripeInvoicePaid($event->data->object),
-            'invoice.payment_failed'             => $this->handleStripePaymentFailed($event->data->object),
-            'customer.subscription.deleted'      => $this->handleStripeSubscriptionDeleted($event->data->object),
-            default                              => null,
+            'checkout.session.completed'      => $this->handleStripeCheckoutCompleted($event->data->object),
+            'invoice.paid'                    => $this->handleStripeInvoicePaid($event->data->object),
+            'invoice.payment_failed'          => $this->handleStripePaymentFailed($event->data->object),
+            'customer.subscription.updated'   => $this->handleStripeSubscriptionUpdated($event->data->object),
+            'customer.subscription.deleted'   => $this->handleStripeSubscriptionDeleted($event->data->object),
+            default                           => null,
         };
 
         return response('OK', 200);
@@ -56,42 +59,91 @@ class WebhookController extends Controller
         $tenant = Tenant::find($tenantId);
         if (! $tenant) return;
 
+        // Busca a assinatura real do Stripe para pegar o current_period_end correto
+        Stripe::setApiKey(config('services.stripe.secret'));
+        $stripeSub = \Stripe\Subscription::retrieve($session->subscription);
+
         Subscription::updateOrCreate(
             ['tenant_id' => $tenantId, 'gateway' => 'stripe'],
             [
                 'gateway_subscription_id' => $session->subscription,
                 'gateway_customer_id'     => $session->customer,
                 'status'                  => 'active',
-                'current_period_end'      => now()->addMonth(),
+                'current_period_end'      => Carbon::createFromTimestamp($stripeSub->current_period_end),
             ]
         );
 
-        $tenant->update(['plan_status' => 'active']);
-        Log::info("Tenant {$tenantId} ativado via Stripe checkout.");
+        // Salva o customer ID no tenant para reutilizar em checkouts futuros
+        $tenant->update([
+            'plan_status'        => 'active',
+            'stripe_customer_id' => $session->customer,
+        ]);
+
+        Log::info("Tenant {$tenantId} ativado via Stripe checkout. Período até: " .
+            Carbon::createFromTimestamp($stripeSub->current_period_end)->toDateString());
     }
 
     private function handleStripeInvoicePaid(object $invoice): void
     {
+        if (! $invoice->subscription) return;
+
         $sub = Subscription::where('gateway_subscription_id', $invoice->subscription)->first();
         if (! $sub) return;
 
+        // Usa o period.end da linha da fatura — correto para qualquer intervalo (semanal, mensal, etc.)
+        $periodEnd = Carbon::createFromTimestamp($invoice->lines->data[0]->period->end);
+
         $sub->update([
             'status'             => 'active',
-            'current_period_end' => \Carbon\Carbon::createFromTimestamp($invoice->lines->data[0]->period->end),
+            'current_period_end' => $periodEnd,
         ]);
 
         $sub->tenant->update(['plan_status' => 'active']);
-        Log::info("Renovação Stripe confirmada para tenant {$sub->tenant_id}.");
+
+        Log::info("Renovação Stripe confirmada para tenant {$sub->tenant_id}. Período até: {$periodEnd->toDateString()}");
     }
 
     private function handleStripePaymentFailed(object $invoice): void
     {
+        if (! $invoice->subscription) return;
+
         $sub = Subscription::where('gateway_subscription_id', $invoice->subscription)->first();
         if (! $sub) return;
 
         $sub->update(['status' => 'past_due']);
         $sub->tenant->update(['plan_status' => 'suspended']);
+
         Log::warning("Pagamento Stripe falhou para tenant {$sub->tenant_id}.");
+    }
+
+    private function handleStripeSubscriptionUpdated(object $stripeSub): void
+    {
+        $sub = Subscription::where('gateway_subscription_id', $stripeSub->id)->first();
+        if (! $sub) return;
+
+        $status = match ($stripeSub->status) {
+            'active'             => 'active',
+            'past_due'           => 'past_due',
+            'canceled'           => 'cancelled',
+            'paused'             => 'past_due',
+            'unpaid'             => 'past_due',
+            default              => $sub->status,
+        };
+
+        $sub->update([
+            'status'             => $status,
+            'current_period_end' => Carbon::createFromTimestamp($stripeSub->current_period_end),
+        ]);
+
+        $tenantStatus = match ($status) {
+            'active'    => 'active',
+            'cancelled' => 'cancelled',
+            default     => 'suspended',
+        };
+
+        $sub->tenant->update(['plan_status' => $tenantStatus]);
+
+        Log::info("Stripe subscription updated para tenant {$sub->tenant_id}: {$status}");
     }
 
     private function handleStripeSubscriptionDeleted(object $stripeSub): void
@@ -100,7 +152,11 @@ class WebhookController extends Controller
         if (! $sub) return;
 
         $sub->update(['status' => 'cancelled']);
-        $sub->tenant->update(['plan_status' => 'cancelled']);
+        $sub->tenant->update([
+            'plan_status'        => 'cancelled',
+            'stripe_customer_id' => null,
+        ]);
+
         Log::info("Assinatura Stripe cancelada para tenant {$sub->tenant_id}.");
     }
 
@@ -109,7 +165,6 @@ class WebhookController extends Controller
     // ============================================================
     public function mercadoPago(Request $request)
     {
-        // Valida a assinatura do webhook do Mercado Pago
         $xSignature = $request->header('x-signature');
         $xRequestId = $request->header('x-request-id');
         $dataId     = $request->query('data_id') ?? $request->input('data.id');
@@ -126,8 +181,8 @@ class WebhookController extends Controller
         match ($type) {
             'payment'                => $this->handleMpPayment($dataId),
             'subscription_preapproval',
-            'updated'                => $this->handleMpSubscription($dataId),
-            default                  => null,
+            'updated'               => $this->handleMpSubscription($dataId),
+            default                 => null,
         };
 
         return response('OK', 200);
@@ -195,9 +250,7 @@ class WebhookController extends Controller
     private function handleMpSubscription(string $preApprovalId): void
     {
         try {
-            \MercadoPago\MercadoPagoConfig::setAccessToken(
-                config('services.mercadopago.access_token')
-            );
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
 
             $client      = new \MercadoPago\Client\PreApproval\PreApprovalClient();
             $preApproval = $client->get($preApprovalId);
@@ -208,7 +261,7 @@ class WebhookController extends Controller
             $tenant = Tenant::find($tenantId);
             if (! $tenant) return;
 
-            $mpStatus = $preApproval->status;  // authorized | paused | cancelled | pending
+            $mpStatus = $preApproval->status;
 
             $internalStatus = match ($mpStatus) {
                 'authorized' => 'active',
@@ -226,7 +279,7 @@ class WebhookController extends Controller
                 ]
             );
 
-            $tenantPlanStatus = $mpStatus === 'authorized' ? 'active' : 
+            $tenantPlanStatus = $mpStatus === 'authorized' ? 'active' :
                                 ($mpStatus === 'cancelled' ? 'cancelled' : 'suspended');
 
             $tenant->update(['plan_status' => $tenantPlanStatus]);

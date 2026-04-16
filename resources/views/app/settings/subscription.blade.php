@@ -1,197 +1,128 @@
 @extends('layouts.app')
-@section('title', 'Assinar — Salon Beauty')
+@section('title', 'Assinatura — Salon Beauty')
 
 @section('content')
-<div class="max-w-lg mx-auto space-y-6" x-data="pixPayment({{ json_encode($pixData) }})">
+<div class="max-w-lg mx-auto space-y-6">
 
     <div class="text-center">
         <h1 class="text-2xl font-bold text-gray-900">Plano Full</h1>
         <p class="text-gray-500 mt-1">Acesso completo a todos os módulos do Salon Beauty</p>
     </div>
 
-    {{-- Card do plano --}}
-    <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
-        <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
-        <p class="text-gray-400 text-sm mt-1">por mês</p>
-
-        <ul class="mt-5 space-y-2 text-sm text-left text-gray-600">
-            @foreach ([
-                'Agenda com múltiplos profissionais',
-                'Comandas e PDV completo',
-                'Controle de clientes e comissões',
-                'Relatórios financeiros',
-                'Suporte ilimitado',
-            ] as $feature)
-                <li class="flex items-center gap-2">
-                    <svg class="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                    </svg>
-                    {{ $feature }}
-                </li>
-            @endforeach
-        </ul>
-    </div>
-
-    {{-- Opções de pagamento --}}
-    <div class="space-y-3">
-        <p class="text-sm font-semibold text-gray-700 text-center">Como deseja pagar?</p>
-
-        {{-- PIX --}}
-        <div class="rounded-2xl border-2 border-gray-200 overflow-hidden">
-            {{-- Botão para gerar QR --}}
-            <button
-                @click="generate()"
-                :disabled="loading || qrCode"
-                x-show="!qrCode"
-                class="w-full flex items-center justify-between px-5 py-4 hover:border-green-400 hover:bg-green-50 transition-colors group disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-                <div class="text-left">
-                    <p class="font-semibold text-gray-900 group-hover:text-green-700 flex items-center gap-2">
-                        <svg class="h-5 w-5 text-green-500" viewBox="0 0 512 512" fill="currentColor"><path d="M112.57,391.19c20.056,0,38.928-7.808,53.12-22l76.693-76.692c5.696-5.664,15.36-5.664,21.024,0.032l76.96,76.96c14.192,14.16,33.056,21.968,53.12,21.968h15.04l-97.2,97.2c-29.344,29.376-76.992,29.376-106.368,0L108,391.19H112.57z"/><path d="M399.488,120.909c-20.064,0-38.928,7.808-53.12,21.968l-76.96,76.992c-5.792,5.792-15.232,5.792-21.024,0l-76.693-76.66c-14.192-14.192-33.064-22-53.12-22H112L208.97,23.981c29.376-29.376,77.024-29.376,106.368,0l97.2,97.2L399.488,120.909z"/><path d="M23.98,208.04l55.04-55.04h37.55c13.664,0,26.848,5.504,36.48,15.104l76.693,76.662c15.392,15.392,40.256,15.424,55.68,0.032l76.928-76.992c9.664-9.632,22.848-15.104,36.48-15.104h42.016l55.072,55.04c29.376,29.344,29.376,76.992,0,106.368l-55.072,55.008H402.31c-13.632,0-26.816-5.472-36.48-15.104l-76.928-76.96c-7.68-7.68-17.792-11.52-27.84-11.52s-20.16,3.84-27.84,11.488l-76.693,76.693c-9.632,9.632-22.816,15.104-36.48,15.104H83.02L23.98,314.408C-5.332,285.032-5.332,237.384,23.98,208.04z"/></svg>
-                        Pix
-                    </p>
-                    <p class="text-xs text-gray-400">Pague agora e renove todo mês com um novo QR</p>
+    {{-- ── Assinatura Stripe ATIVA ─────────────────────────────── --}}
+    @if ($subscription?->gateway === 'stripe' && in_array($subscription->status, ['active', 'past_due']))
+        <div class="rounded-2xl border-2 {{ $subscription->status === 'active' ? 'border-green-400 bg-green-50' : 'border-amber-400 bg-amber-50' }} p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Status da assinatura</p>
+                    @if ($subscription->status === 'active')
+                        <p class="text-lg font-bold text-green-700 flex items-center gap-2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                            Ativa — Cobrança automática semanal
+                        </p>
+                    @else
+                        <p class="text-lg font-bold text-amber-700 flex items-center gap-2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                            Pagamento pendente
+                        </p>
+                    @endif
                 </div>
-                <span x-show="!loading" class="text-gray-300 group-hover:text-green-500">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                </span>
-                <svg x-show="loading" class="h-5 w-5 animate-spin text-green-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-            </button>
-
-            {{-- QR code gerado --}}
-            <div x-show="qrCode" x-cloak class="p-5 space-y-4">
-
-                {{-- Aguardando pagamento --}}
-                <div x-show="!paid" class="space-y-4">
-                    <div class="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                        <svg class="h-4 w-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                        Aguardando pagamento…
-                    </div>
-
-                    <div class="flex justify-center">
-                        <img :src="'data:image/png;base64,' + qrCodeBase64" alt="QR Code PIX"
-                             class="w-52 h-52 rounded-xl border border-gray-200 p-2">
-                    </div>
-
-                    <div>
-                        <p class="text-xs text-gray-500 mb-1 font-medium">Copia e cola:</p>
-                        <div class="flex gap-2">
-                            <input
-                                type="text"
-                                :value="qrCode"
-                                readonly
-                                class="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-600 font-mono truncate"
-                            >
-                            <button
-                                @click="copy()"
-                                class="shrink-0 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-100 transition"
-                            >
-                                <span x-show="!copied">Copiar</span>
-                                <span x-show="copied" class="text-green-600">Copiado!</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <p class="text-xs text-center text-gray-400">O QR code expira em 24 horas</p>
-                </div>
-
-                {{-- Pago! --}}
-                <div x-show="paid" class="text-center space-y-3 py-4">
-                    <div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                        <svg class="h-7 w-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                    </div>
-                    <p class="font-semibold text-gray-900">Pagamento confirmado!</p>
-                    <p class="text-sm text-gray-500">Sua assinatura está ativa por 1 mês.</p>
-                    <a href="{{ route('dashboard') }}" class="inline-block rounded-xl bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
-                        Ir para o dashboard
-                    </a>
-                </div>
+                <svg class="h-8 w-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
+                </svg>
             </div>
+
+            @if ($subscription->current_period_end)
+                <p class="text-sm text-gray-600">
+                    Próxima cobrança em
+                    <span class="font-semibold">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
+                </p>
+            @endif
+
+            <a href="{{ route('subscription.portal') }}"
+               class="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Gerenciar assinatura (trocar cartão, cancelar, faturas)
+            </a>
         </div>
 
-        {{-- Cartão de crédito (Stripe) --}}
-        <form method="POST" action="{{ route('subscription.stripe') }}">
-            @csrf
-            <button type="submit"
-                class="w-full flex items-center justify-between rounded-2xl border-2 border-gray-200
-                       px-5 py-4 hover:border-primary-400 hover:bg-primary-50 transition-colors group">
-                <div class="text-left">
-                    <p class="font-semibold text-gray-900 group-hover:text-primary-700">Cartão de crédito</p>
-                    <p class="text-xs text-gray-400">Cobrança automática mensal via Stripe</p>
-                </div>
-                <svg class="h-5 w-5 text-gray-300 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-                </svg>
-            </button>
-        </form>
-    </div>
+    {{-- ── Assinatura PIX ATIVA ─────────────────────────────────── --}}
+    @elseif ($subscription?->gateway === 'mercadopago' && $subscription->status === 'active')
+        <div class="rounded-2xl border-2 border-green-400 bg-green-50 p-6 space-y-3">
+            <p class="text-lg font-bold text-green-700 flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                Ativa — PIX
+            </p>
+            @if ($subscription->current_period_end)
+                <p class="text-sm text-gray-600">
+                    Válida até
+                    <span class="font-semibold">{{ $subscription->current_period_end->format('d/m/Y') }}</span>.
+                    Para renovar, gere um novo QR code abaixo.
+                </p>
+            @endif
+        </div>
 
-    <p class="text-center text-xs text-gray-400">Cancele a qualquer momento. Sem fidelidade.</p>
+        {{-- Permite gerar novo QR para renovar --}}
+        <div x-data="pixPayment(null)" class="rounded-2xl border-2 border-gray-200 overflow-hidden">
+            @include('app.settings._pix-section')
+        </div>
+
+    {{-- ── Assinatura cancelada / expirada / sem assinatura ────────── --}}
+    @else
+        {{-- Card do plano --}}
+        <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
+            <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
+            <p class="text-gray-400 text-sm mt-1">por semana</p>
+
+            <ul class="mt-5 space-y-2 text-sm text-left text-gray-600">
+                @foreach ([
+                    'Agenda com múltiplos profissionais',
+                    'Comandas e PDV completo',
+                    'Controle de clientes e comissões',
+                    'Relatórios financeiros',
+                    'Suporte ilimitado',
+                ] as $feature)
+                    <li class="flex items-center gap-2">
+                        <svg class="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        </svg>
+                        {{ $feature }}
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+
+        {{-- Opções de pagamento --}}
+        <div class="space-y-3">
+            <p class="text-sm font-semibold text-gray-700 text-center">Como deseja pagar?</p>
+
+            {{-- PIX --}}
+            <div x-data="pixPayment({{ json_encode($pixData) }})" class="rounded-2xl border-2 border-gray-200 overflow-hidden">
+                @include('app.settings._pix-section')
+            </div>
+
+            {{-- Cartão de crédito (Stripe) --}}
+            <form method="POST" action="{{ route('subscription.stripe') }}">
+                @csrf
+                <button type="submit"
+                    class="w-full flex items-center justify-between rounded-2xl border-2 border-gray-200
+                           px-5 py-4 hover:border-primary-400 hover:bg-primary-50 transition-colors group">
+                    <div class="text-left">
+                        <p class="font-semibold text-gray-900 group-hover:text-primary-700">Cartão de crédito</p>
+                        <p class="text-xs text-gray-400">Cobrança automática semanal via Stripe</p>
+                    </div>
+                    <svg class="h-5 w-5 text-gray-300 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <p class="text-center text-xs text-gray-400">Cancele a qualquer momento. Sem fidelidade.</p>
+    @endif
+
 </div>
-
-<script>
-function pixPayment(existing) {
-    return {
-        loading:      false,
-        qrCode:       existing ? existing.qr_code        : null,
-        qrCodeBase64: existing ? existing.qr_code_base64 : null,
-        paymentId:    existing ? existing.payment_id     : null,
-        paid:         false,
-        copied:       false,
-        pollTimer:    null,
-
-        init() {
-            // Se já há QR pendente, inicia polling imediatamente
-            if (this.qrCode) this.startPolling();
-        },
-
-        generate() {
-            const self = this;
-            self.loading = true;
-
-            fetch('{{ route('subscription.pix') }}', {
-                method:  'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    'Accept':       'application/json',
-                },
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                self.qrCode       = data.qr_code;
-                self.qrCodeBase64 = data.qr_code_base64;
-                self.paymentId    = data.payment_id;
-                self.startPolling();
-            })
-            .catch(function(err) { alert('Erro ao gerar PIX: ' + err.message); })
-            .finally(function()  { self.loading = false; });
-        },
-
-        startPolling() {
-            const self = this;
-            self.pollTimer = setInterval(function() {
-                fetch('{{ route('subscription.pix.status') }}', {
-                    headers: { 'Accept': 'application/json' },
-                })
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
-                    if (data.status === 'active') {
-                        self.paid = true;
-                        clearInterval(self.pollTimer);
-                    }
-                });
-            }, 5000);
-        },
-
-        copy() {
-            const self = this;
-            navigator.clipboard.writeText(self.qrCode).then(function() {
-                self.copied = true;
-                setTimeout(function() { self.copied = false; }, 2000);
-            });
-        }
-    };
-}
-</script>
 @endsection
