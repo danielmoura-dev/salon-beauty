@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Professional;
 use App\Models\Service;
 use App\Models\Product;
@@ -116,7 +117,7 @@ class OrderController extends Controller
         return response()->json([
             'professionals' => Professional::orderBy('name')->get(['id', 'name']),
             'services'      => Service::where('active', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct']),
-            'products'      => Product::where('active', true)->where('for_sale', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct']),
+            'products'      => Product::where('active', true)->where('for_sale', true)->orderBy('name')->get(['id', 'name', 'price', 'commission_pct', 'track_stock', 'stock_qty', 'stock_alert_qty']),
             'fees'          => [
                 'credit_card' => (float) ($tenant->credit_card_fee ?? 0),
                 'debit_card'  => (float) ($tenant->debit_card_fee ?? 0),
@@ -132,6 +133,7 @@ class OrderController extends Controller
             'description'     => ['required', 'string', 'max:200'],
             'qty'             => ['required', 'integer', 'min:1'],
             'unit_price'      => ['required', 'numeric', 'min:0'],
+            'product_id'      => ['nullable', 'uuid', 'exists:products,id'],
             'professional_id' => ['nullable', 'uuid', 'exists:professionals,id'],
             'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
             'has_commission'  => ['boolean'],
@@ -140,6 +142,15 @@ class OrderController extends Controller
         $data['has_commission'] = $request->boolean('has_commission', true);
 
         $order->items()->create($data);
+
+        // Deduct stock if product tracks it
+        if (!empty($data['product_id'])) {
+            $product = Product::find($data['product_id']);
+            if ($product && $product->track_stock && $product->stock_qty !== null) {
+                $product->decrement('stock_qty', $data['qty']);
+            }
+        }
+
         $order->recalcTotal();
 
         if ($request->expectsJson()) {
@@ -151,6 +162,14 @@ class OrderController extends Controller
 
     public function removeItem(Request $request, Order $order, OrderItem $item)
     {
+        // Restore stock if item linked to a tracked product
+        if ($item->product_id) {
+            $product = Product::find($item->product_id);
+            if ($product && $product->track_stock && $product->stock_qty !== null) {
+                $product->increment('stock_qty', $item->qty);
+            }
+        }
+
         $item->delete();
         $order->recalcTotal();
 
@@ -226,6 +245,17 @@ class OrderController extends Controller
 
     public function cancel(Request $request, Order $order)
     {
+        // Restore stock for any tracked product items
+        $order->load('items');
+        foreach ($order->items as $item) {
+            if ($item->product_id) {
+                $product = Product::find($item->product_id);
+                if ($product && $product->track_stock && $product->stock_qty !== null) {
+                    $product->increment('stock_qty', $item->qty);
+                }
+            }
+        }
+
         $order->delete();
 
         if ($request->expectsJson()) {

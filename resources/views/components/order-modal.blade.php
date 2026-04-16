@@ -720,8 +720,11 @@
                                :class="isPickerProductSelected(prod.id) ? 'text-primary-800' : 'text-gray-900'"
                                x-text="prod.name"></p>
                             <p class="text-xs text-gray-400"
-                               x-text="'R$ ' + Number(prod.price).toFixed(2).replace('.', ',')"></p>
+                               x-text="'R$ ' + Number(prod.price).toFixed(2).replace('.', ',') + (prod.track_stock ? ' · Estoque: ' + prod.stock_qty : '')"></p>
                         </div>
+                        <template x-if="prod.track_stock && prod.stock_qty <= prod.stock_alert_qty">
+                            <span class="shrink-0 text-xs bg-orange-100 text-orange-700 font-semibold px-2 py-0.5 rounded-full">Baixo</span>
+                        </template>
                     </button>
                 </template>
                 <p x-show="filteredPickerProducts().length === 0" class="text-center text-sm text-gray-400 py-8">Nenhum produto encontrado.</p>
@@ -765,7 +768,7 @@ function orderModal() {
 
         itemForm: {
             type: 'service', description: '', qty: 1, unit_price: 0,
-            professional_id: '', commission_pct: 0, has_commission: true,
+            product_id: null, professional_id: '', commission_pct: 0, has_commission: true,
         },
 
         // confirmação cancelamento
@@ -813,7 +816,7 @@ function orderModal() {
 
         openAddItem() {
             this.itemError              = '';
-            this.itemForm               = { type: 'service', description: '', qty: 1, unit_price: 0, professional_id: '', commission_pct: 0, has_commission: true };
+            this.itemForm               = { type: 'service', description: '', qty: 1, unit_price: 0, product_id: null, professional_id: '', commission_pct: 0, has_commission: true };
             this.pickerSelectedServices = [];
             this.pickerSelectedProducts = [];
             this.view                   = 'addItem';
@@ -1090,6 +1093,7 @@ function orderModal() {
             this.itemForm.unit_price     = parseFloat(first.price);
             this.itemForm.commission_pct = parseFloat(first.commission_pct ?? 0);
             this.itemForm.has_commission = parseFloat(first.commission_pct ?? 0) > 0;
+            this.itemForm.product_id     = null;
             // Adiciona os demais direto
             if (rest.length) {
                 this.saving = true;
@@ -1136,8 +1140,9 @@ function orderModal() {
             const [first, ...rest] = this.pickerSelectedProducts;
             this.itemForm.description    = first.name;
             this.itemForm.unit_price     = parseFloat(first.price);
-            this.itemForm.commission_pct = 0;
-            this.itemForm.has_commission = false;
+            this.itemForm.commission_pct = parseFloat(first.commission_pct ?? 0);
+            this.itemForm.has_commission = parseFloat(first.commission_pct ?? 0) > 0;
+            this.itemForm.product_id     = first.id;
             if (rest.length) {
                 this.saving = true;
                 for (const prod of rest) {
@@ -1147,7 +1152,10 @@ function orderModal() {
                         body: JSON.stringify({
                             type: 'product', description: prod.name, qty: 1,
                             unit_price: parseFloat(prod.price),
-                            professional_id: null, commission_pct: 0, has_commission: false,
+                            product_id: prod.id,
+                            professional_id: null,
+                            commission_pct: parseFloat(prod.commission_pct ?? 0),
+                            has_commission: parseFloat(prod.commission_pct ?? 0) > 0,
                         }),
                     });
                 }

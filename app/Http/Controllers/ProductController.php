@@ -19,16 +19,25 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'           => ['required', 'string', 'max:150'],
-            'brand'          => ['nullable', 'string', 'max:100'],
-            'category_id'    => ['nullable', 'uuid', 'exists:categories,id'],
-            'for_sale'       => ['boolean'],
-            'price'          => ['nullable', 'numeric', 'min:0'],
-            'commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'photo'          => ['nullable', 'image', 'max:2048'],
+            'name'            => ['required', 'string', 'max:150'],
+            'brand'           => ['nullable', 'string', 'max:100'],
+            'category_id'     => ['nullable', 'uuid', 'exists:categories,id'],
+            'for_sale'        => ['boolean'],
+            'price'           => ['nullable', 'numeric', 'min:0'],
+            'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'photo'           => ['nullable', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,avif', 'max:5120'],
+            'track_stock'     => ['boolean'],
+            'stock_qty'       => ['nullable', 'integer', 'min:0'],
+            'stock_alert_qty' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $data['for_sale'] = $request->boolean('for_sale');
+        $data['for_sale']    = $request->boolean('for_sale');
+        $data['track_stock'] = $request->boolean('track_stock');
+
+        if (!$data['track_stock']) {
+            $data['stock_qty']       = null;
+            $data['stock_alert_qty'] = null;
+        }
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')
@@ -43,18 +52,27 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $data = $request->validate([
-            'name'           => ['required', 'string', 'max:150'],
-            'brand'          => ['nullable', 'string', 'max:100'],
-            'category_id'    => ['nullable', 'uuid', 'exists:categories,id'],
-            'for_sale'       => ['boolean'],
-            'price'          => ['nullable', 'numeric', 'min:0'],
-            'commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'photo'          => ['nullable', 'image', 'max:2048'],
-            'active'         => ['boolean'],
+            'name'            => ['required', 'string', 'max:150'],
+            'brand'           => ['nullable', 'string', 'max:100'],
+            'category_id'     => ['nullable', 'uuid', 'exists:categories,id'],
+            'for_sale'        => ['boolean'],
+            'price'           => ['nullable', 'numeric', 'min:0'],
+            'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'photo'           => ['nullable', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,avif', 'max:5120'],
+            'active'          => ['boolean'],
+            'track_stock'     => ['boolean'],
+            'stock_qty'       => ['nullable', 'integer', 'min:0'],
+            'stock_alert_qty' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $data['for_sale'] = $request->boolean('for_sale');
-        $data['active']   = $request->boolean('active', true);
+        $data['for_sale']    = $request->boolean('for_sale');
+        $data['active']      = $request->boolean('active', true);
+        $data['track_stock'] = $request->boolean('track_stock');
+
+        if (!$data['track_stock']) {
+            $data['stock_qty']       = null;
+            $data['stock_alert_qty'] = null;
+        }
 
         if ($request->hasFile('photo')) {
             if ($product->photo) Storage::disk('public')->delete($product->photo);

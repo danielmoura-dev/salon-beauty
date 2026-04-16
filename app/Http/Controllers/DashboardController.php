@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Client;
 use App\Models\Order;
+use App\Models\Product;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -47,10 +48,17 @@ class DashboardController extends Controller
             ->filter(fn($c) => $c->birthday && $c->birthday->format('m-d') === $todayMd)
             ->values();
 
+        // Produtos com estoque em alerta (chegou ou passou da quantidade mínima)
+        $lowStockProducts = Product::where('track_stock', true)
+            ->whereNotNull('stock_alert_qty')
+            ->whereRaw('stock_qty <= stock_alert_qty')
+            ->orderBy('name')
+            ->get(['id', 'name', 'stock_qty', 'stock_alert_qty']);
+
         return view('app.dashboard', compact(
             'user', 'tenant',
             'appointmentsToday', 'openOrders', 'revenueToday', 'newClientsMonth',
-            'nextAppointments', 'birthdays'
+            'nextAppointments', 'birthdays', 'lowStockProducts'
         ));
     }
 }

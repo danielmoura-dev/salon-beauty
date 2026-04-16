@@ -23,7 +23,8 @@
 
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         @forelse ($products as $product)
-            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+            <div class="rounded-2xl bg-white border overflow-hidden flex flex-col shadow-sm
+                        {{ $product->isLowStock() ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-100' }}">
 
                 {{-- Imagem quadrada --}}
                 <div class="relative aspect-square w-full bg-gray-50">
@@ -40,6 +41,11 @@
                             R$ {{ number_format($product->price, 2, ',', '.') }}
                         </span>
                     @endif
+                    @if ($product->isLowStock())
+                        <span class="absolute top-2 left-2 text-xs bg-orange-500 text-white rounded-full px-2 py-0.5 font-semibold shadow-sm">
+                            Baixo
+                        </span>
+                    @endif
                 </div>
 
                 {{-- Info --}}
@@ -48,6 +54,13 @@
                     <p class="text-xs text-gray-400 truncate mt-0.5">
                         {{ $product->brand ? $product->brand . ' · ' : '' }}{{ $product->category?->name ?? 'Sem categoria' }}
                     </p>
+
+                    {{-- Estoque --}}
+                    @if ($product->track_stock)
+                        <p class="text-xs mt-1 font-medium {{ $product->isLowStock() ? 'text-orange-600' : 'text-gray-500' }}">
+                            Estoque: {{ $product->stock_qty ?? 0 }} un.
+                        </p>
+                    @endif
 
                     {{-- Ações --}}
                     <div class="flex gap-1.5 mt-3 mt-auto">
@@ -131,6 +144,28 @@
                 </x-form-field>
             </div>
 
+            {{-- Controle de estoque --}}
+            <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+                <span class="text-sm font-medium text-gray-700">Controlar estoque</span>
+                <input type="checkbox" name="track_stock" value="1"
+                       :checked="editing?.track_stock"
+                       x-model="trackStock"
+                       class="rounded border-gray-300 text-primary-500 focus:ring-primary-500">
+            </label>
+
+            <div x-show="trackStock" class="grid grid-cols-2 gap-3">
+                <x-form-field label="Quantidade em estoque">
+                    <input type="number" name="stock_qty" :value="editing?.stock_qty ?? 0"
+                           min="0" step="1"
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </x-form-field>
+                <x-form-field label="Alerta quando atingir">
+                    <input type="number" name="stock_alert_qty" :value="editing?.stock_alert_qty ?? 0"
+                           min="0" step="1"
+                           class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                </x-form-field>
+            </div>
+
             <x-form-field label="Foto (opcional)">
                 <input type="file" name="photo" accept="image/*"
                     class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0
@@ -198,6 +233,7 @@ function productsPage() {
     return {
         editing:            null,
         forSale:            false,
+        trackStock:         false,
         categories:         @json($categories),
         selectedCategoryId: '',
         categoryFormName:   '',
@@ -207,13 +243,15 @@ function productsPage() {
         openCreate() {
             this.editing            = null;
             this.forSale            = false;
+            this.trackStock         = false;
             this.selectedCategoryId = '';
             this.$dispatch('open-modal-product');
         },
 
         openEdit(p) {
-            this.editing = p;
-            this.forSale = p.for_sale;
+            this.editing    = p;
+            this.forSale    = p.for_sale;
+            this.trackStock = p.track_stock;
             this.$nextTick(() => { this.selectedCategoryId = p.category_id || ''; });
             this.$dispatch('open-modal-product');
         },
