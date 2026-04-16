@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Category;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -27,7 +28,31 @@ class AuthService
             'role'      => 'owner',
         ]);
 
+        $this->seedDefaultCategories($tenant->id);
+
         return $user;
+    }
+
+    private function seedDefaultCategories(string $tenantId): void
+    {
+        $serviceCategories = [
+            'Cabelo', 'Depilação', 'Estética Facial', 'Estética Corporal',
+            'Mãos e Pés', 'Maquiagem', 'Sobrancelhas',
+        ];
+
+        $productCategories = [
+            'Produtos para Cabelo', 'Produtos para Depilação',
+            'Produtos para Estética Facial', 'Produtos para Estética Corporal',
+            'Produtos para Mãos e Pés', 'Produtos para Maquiagem', 'Acessórios',
+        ];
+
+        foreach ($serviceCategories as $name) {
+            Category::create(['tenant_id' => $tenantId, 'type' => 'service', 'name' => $name]);
+        }
+
+        foreach ($productCategories as $name) {
+            Category::create(['tenant_id' => $tenantId, 'type' => 'product', 'name' => $name]);
+        }
     }
 
     public function findOrCreateFromGoogle(SocialiteUser $socialUser): User
