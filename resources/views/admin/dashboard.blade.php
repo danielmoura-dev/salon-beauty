@@ -131,7 +131,7 @@
                             @foreach ($tenants as $tenant)
                             <tr
                                 class="row-hover transition-colors"
-                                x-show="matchesTenant('{{ strtolower($tenant->name . ' ' . $tenant->email . ' ' . $tenant->slug) }}')"
+                                x-show="matchesTenant('{{ strtolower($tenant->name . ' ' . $tenant->slug) }}')"
                                 x-data="tenantRow('{{ $tenant->id }}')"
                             >
                                 {{-- Negócio --}}
@@ -148,7 +148,13 @@
                                 </td>
 
                                 {{-- E-mail --}}
-                                <td class="px-4 py-3.5 text-gray-400 text-xs">{{ $tenant->email }}</td>
+                                <td class="px-4 py-3.5 text-gray-400 text-xs">
+                                    @php
+                                        [$local, $domain] = explode('@', $tenant->email);
+                                        $masked = substr($local, 0, 3) . str_repeat('*', max(strlen($local) - 3, 3)) . '@' . $domain;
+                                    @endphp
+                                    {{ $masked }}
+                                </td>
 
                                 {{-- Status --}}
                                 <td class="px-4 py-3.5">
