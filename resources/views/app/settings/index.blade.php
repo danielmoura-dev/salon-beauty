@@ -30,8 +30,8 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">E-mail do estabelecimento</label>
-                <input type="email" name="email" value="{{ $tenant->email }}"
-                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <input type="email" value="{{ $tenant->email }}" readonly
+                    class="w-full rounded-xl border-gray-200 bg-gray-50 text-gray-500 text-sm cursor-not-allowed">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
