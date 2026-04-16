@@ -18,7 +18,7 @@
                     @if ($subscription->status === 'active')
                         <p class="text-lg font-bold text-green-700 flex items-center gap-2">
                             <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-                            Ativa — Cobrança automática semanal
+                            Ativa — Cobrança automática mensal
                         </p>
                     @else
                         <p class="text-lg font-bold text-amber-700 flex items-center gap-2">
@@ -75,7 +75,7 @@
         {{-- Card do plano --}}
         <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
             <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
-            <p class="text-gray-400 text-sm mt-1">por semana</p>
+            <p class="text-gray-400 text-sm mt-1">por mês</p>
 
             <ul class="mt-5 space-y-2 text-sm text-left text-gray-600">
                 @foreach ([
@@ -112,7 +112,7 @@
                            px-5 py-4 hover:border-primary-400 hover:bg-primary-50 transition-colors group">
                     <div class="text-left">
                         <p class="font-semibold text-gray-900 group-hover:text-primary-700">Cartão de crédito</p>
-                        <p class="text-xs text-gray-400">Cobrança automática semanal via Stripe</p>
+                        <p class="text-xs text-gray-400">Cobrança automática mensal via Stripe</p>
                     </div>
                     <svg class="h-5 w-5 text-gray-300 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
