@@ -150,14 +150,29 @@
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Categorias existentes</p>
                 <div class="rounded-xl border border-gray-100 divide-y divide-gray-50 max-h-44 overflow-y-auto">
                     <template x-for="cat in categories" :key="cat.id">
-                        <div class="flex items-center justify-between px-3 py-2.5">
-                            <span class="text-sm font-medium text-gray-700" x-text="cat.name"></span>
-                            <button type="button" @click="deleteCategory(cat)"
-                                class="ml-2 shrink-0 text-gray-300 hover:text-red-500 transition-colors">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
+                        <div class="px-3 py-2.5">
+                            <div x-show="deletingCatId !== cat.id" class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700" x-text="cat.name"></span>
+                                <button type="button" @click="deletingCatId = cat.id"
+                                    class="ml-2 shrink-0 text-gray-300 hover:text-red-500 transition-colors">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div x-show="deletingCatId === cat.id" class="flex items-center justify-between gap-2">
+                                <span class="text-sm text-red-600 font-medium">Remover <span x-text="cat.name"></span>?</span>
+                                <div class="flex gap-1.5 shrink-0">
+                                    <button type="button" @click="deletingCatId = null"
+                                        class="rounded-lg px-2.5 py-1 text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                                        Não
+                                    </button>
+                                    <button type="button" @click="deleteCategory(cat)"
+                                        class="rounded-lg px-2.5 py-1 text-xs font-semibold bg-red-600 text-white hover:bg-red-700">
+                                        Sim
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </template>
                 </div>
@@ -198,6 +213,7 @@ function servicesPage() {
         categoryFormName: '',
         categoryFormSaving: false,
         categoryFormError: '',
+        deletingCatId: null,
 
         openCreate() {
             this.editing = null;
@@ -218,7 +234,6 @@ function servicesPage() {
         },
 
         async deleteCategory(cat) {
-            if (!confirm(`Remover a categoria "${cat.name}"?`)) return;
             const res = await fetch(`/categories/${cat.id}`, {
                 method: 'DELETE',
                 headers: {
@@ -226,12 +241,12 @@ function servicesPage() {
                     Accept: 'application/json',
                 },
             });
+            this.deletingCatId = null;
             if (res.ok) {
                 this.categories = this.categories.filter(c => c.id !== cat.id);
                 if (this.selectedCategoryId === cat.id) this.selectedCategoryId = '';
             } else {
-                const err = await res.json().catch(() => ({}));
-                alert(err.message || 'Erro ao remover categoria.');
+                this.categoryFormError = 'Erro ao remover categoria.';
             }
         },
 
