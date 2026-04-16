@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use Illuminate\Http\Request;
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Payment\PaymentClient;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
-use MercadoPago\Client\PreApproval\PreApprovalClient;
-use MercadoPago\MercadoPagoConfig;
 
 class SubscriptionController extends Controller
 {
@@ -19,56 +19,82 @@ class SubscriptionController extends Controller
         return view('app.settings.subscription', compact('tenant', 'subscription'));
     }
 
-    // Redireciona para o Stripe Checkout (cartão recorrente)
+    // ── Stripe (cartão recorrente) ──────────────────────────────────
     public function checkoutStripe(Request $request)
     {
         Stripe::setApiKey(config('services.stripe.secret'));
 
         $session = StripeSession::create([
-            'mode'                => 'subscription',
+            'mode'                 => 'subscription',
             'payment_method_types' => ['card'],
-            'line_items'          => [[
+            'line_items'           => [[
                 'price'    => config('services.stripe.price_id'),
                 'quantity' => 1,
             ]],
-            'metadata'            => ['tenant_id' => auth()->user()->tenant_id],
-            'success_url'         => route('subscription.success') . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'          => route('settings'),
+            'metadata'             => ['tenant_id' => auth()->user()->tenant_id],
+            'success_url'          => route('subscription.success') . '?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url'           => route('settings'),
         ]);
 
         return redirect($session->url);
     }
 
-    // Redireciona para o Mercado Pago (Pix recorrente)
-    public function checkoutMercadoPago(Request $request)
+    // ── PIX via Mercado Pago ────────────────────────────────────────
+    public function pixCheckout(Request $request)
     {
+        $tenant = auth()->user()->tenant;
+
         MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
 
-        $client = new PreApprovalClient();
-
-        $preApproval = $client->create([
-            'reason'              => 'Salon Beauty — Plano Full',
-            'auto_recurring'      => [
-                'frequency'       => 1,
-                'frequency_type'  => 'months',
-                'transaction_amount' => (float) env('APP_PLAN_PRICE', 57.90),
-                'currency_id'     => 'BRL',
+        $client  = new PaymentClient();
+        $payment = $client->create([
+            'transaction_amount' => (float) config('app.plan_price', 57.90),
+            'description'        => 'Salon Beauty — Plano Mensal',
+            'payment_method_id'  => 'pix',
+            'payer'              => [
+                'email'      => $tenant->email,
+                'first_name' => $tenant->name,
             ],
-            'back_url'            => route('subscription.success'),
-            'external_reference'  => auth()->user()->tenant_id,
-            'status'              => 'pending',
+            'external_reference' => $tenant->id,
+            'notification_url'   => route('webhooks.mercadopago'),
+            'date_of_expiration' => now()->addHours(24)->format('Y-m-d\TH:i:s.000P'),
         ]);
 
-        return redirect($preApproval->init_point);
+        // Guarda pagamento pendente para rastrear via webhook
+        Subscription::updateOrCreate(
+            ['tenant_id' => $tenant->id, 'gateway' => 'mercadopago'],
+            [
+                'gateway_subscription_id' => (string) $payment->id,
+                'status'                  => 'pending',
+                'current_period_end'      => null,
+            ]
+        );
+
+        return response()->json([
+            'payment_id'     => $payment->id,
+            'qr_code'        => $payment->point_of_interaction->transaction_data->qr_code,
+            'qr_code_base64' => $payment->point_of_interaction->transaction_data->qr_code_base64,
+        ]);
+    }
+
+    // Polling — frontend verifica se o pagamento foi confirmado
+    public function pixStatus()
+    {
+        $subscription = auth()->user()->tenant->subscription;
+
+        if ($subscription && $subscription->status === 'active') {
+            return response()->json(['status' => 'active']);
+        }
+
+        return response()->json(['status' => 'pending']);
     }
 
     public function success(Request $request)
     {
-        // O webhook vai confirmar — aqui só mostramos tela de aguardo
         return view('app.settings.subscription-pending');
     }
 
-    // Cancelar assinatura Stripe
+    // ── Cancelar Stripe ────────────────────────────────────────────
     public function cancelStripe(Request $request)
     {
         $subscription = auth()->user()->tenant->subscription;
@@ -78,7 +104,6 @@ class SubscriptionController extends Controller
         }
 
         Stripe::setApiKey(config('services.stripe.secret'));
-
         \Stripe\Subscription::update($subscription->gateway_subscription_id, [
             'cancel_at_period_end' => true,
         ]);

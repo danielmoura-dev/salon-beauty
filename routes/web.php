@@ -105,7 +105,8 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     // Assinatura
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::post('/subscription/stripe', [SubscriptionController::class, 'checkoutStripe'])->name('subscription.stripe');
-    Route::post('/subscription/mercadopago', [SubscriptionController::class, 'checkoutMercadoPago'])->name('subscription.mercadopago');
+    Route::post('/subscription/pix', [SubscriptionController::class, 'pixCheckout'])->name('subscription.pix');
+    Route::get('/subscription/pix/status', [SubscriptionController::class, 'pixStatus'])->name('subscription.pix.status');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancelStripe'])->name('subscription.cancel');
 

@@ -6,6 +6,8 @@ use App\Models\Subscription;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Payment\PaymentClient;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook as StripeWebhook;
 
@@ -122,9 +124,10 @@ class WebhookController extends Controller
         Log::info('MP webhook type: ' . $type);
 
         match ($type) {
+            'payment'                => $this->handleMpPayment($dataId),
             'subscription_preapproval',
-            'updated' => $this->handleMpSubscription($dataId),
-            default   => null,
+            'updated'                => $this->handleMpSubscription($dataId),
+            default                  => null,
         };
 
         return response('OK', 200);
@@ -150,6 +153,43 @@ class WebhookController extends Controller
         $message = "id:{$dataId};request-id:{$xRequestId};ts:{$ts};";
 
         return hash_equals(hash_hmac('sha256', $message, $secret), $hash);
+    }
+
+    private function handleMpPayment(string $paymentId): void
+    {
+        try {
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+
+            $client  = new PaymentClient();
+            $payment = $client->get((int) $paymentId);
+
+            if ($payment->status !== 'approved') {
+                Log::info("MP payment {$paymentId} status: {$payment->status} — ignorado.");
+                return;
+            }
+
+            $tenantId = $payment->external_reference ?? null;
+            if (! $tenantId) return;
+
+            $tenant = Tenant::find($tenantId);
+            if (! $tenant) return;
+
+            Subscription::updateOrCreate(
+                ['tenant_id' => $tenantId, 'gateway' => 'mercadopago'],
+                [
+                    'gateway_subscription_id' => $paymentId,
+                    'status'                  => 'active',
+                    'current_period_end'      => now()->addMonth(),
+                ]
+            );
+
+            $tenant->update(['plan_status' => 'active']);
+
+            Log::info("PIX aprovado — tenant {$tenantId} ativo até " . now()->addMonth()->toDateString());
+
+        } catch (\Exception $e) {
+            Log::error('MP payment webhook error: ' . $e->getMessage());
+        }
     }
 
     private function handleMpSubscription(string $preApprovalId): void
