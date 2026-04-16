@@ -173,7 +173,7 @@
                                 <td class="px-4 py-3.5 text-xs">
                                     @if ($tenant->trial_ends_at)
                                         @php
-                                            $daysLeft = (int) now()->diffInDays($tenant->trial_ends_at, false);
+                                            $daysLeft = (int) today()->diffInDays($tenant->trial_ends_at->copy()->startOfDay(), false);
                                         @endphp
                                         <span id="trial-{{ $tenant->id }}" class="font-mono text-gray-400">{{ $tenant->trial_ends_at->format('d/m/Y') }}</span>
                                         <span class="block mt-0.5 font-medium {{ $daysLeft > 7 ? 'text-emerald-400' : ($daysLeft > 0 ? 'text-amber-400' : 'text-red-400') }}">

@@ -43,7 +43,8 @@
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-semibold text-primary-700">Período de teste</p>
                 <p class="text-xs text-primary-500">
-                    Expira {{ $tenant->trial_ends_at?->diffForHumans() }}.
+                    @php $dLeft = (int) today()->diffInDays($tenant->trial_ends_at->copy()->startOfDay(), false); @endphp
+                    {{ $dLeft > 0 ? "Faltam {$dLeft} dias." : 'Expira hoje.' }}
                 </p>
             </div>
             <a href="{{ route('settings') }}"

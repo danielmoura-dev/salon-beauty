@@ -194,7 +194,8 @@
                 <p class="text-sm text-gray-500 mb-4">
                     Você está no período de teste.
                     @if (auth()->user()->tenant->trial_ends_at)
-                        Expira em <strong>{{ auth()->user()->tenant->trial_ends_at->diffForHumans() }}</strong>.
+                        @php $dLeft = (int) today()->diffInDays(auth()->user()->tenant->trial_ends_at->copy()->startOfDay(), false); @endphp
+                        Expira em <strong>{{ $dLeft > 0 ? "{$dLeft} dias" : 'hoje' }}</strong>.
                     @endif
                 </p>
                 <a href="{{ route('subscription.index') }}"
