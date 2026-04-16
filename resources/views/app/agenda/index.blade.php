@@ -863,7 +863,7 @@ function agenda() {
         form: {
             client_id: '', professional_id: '', service_id: '',
             date: '{{ $date->toDateString() }}',
-            start_time: '09:00', end_time: '10:00',
+            start_time: '{{ str_pad($startHour, 2, "0", STR_PAD_LEFT) }}:00', end_time: '{{ str_pad($startHour + 1, 2, "0", STR_PAD_LEFT) }}:00',
             recurrence: 'none', create_order: true, notes: '',
         },
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Category;
+use App\Models\Professional;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -29,6 +30,11 @@ class AuthService
         ]);
 
         $this->seedDefaultCategories($tenant->id);
+
+        Professional::create([
+            'tenant_id' => $tenant->id,
+            'name'      => $data['name'],
+        ]);
 
         return $user;
     }
