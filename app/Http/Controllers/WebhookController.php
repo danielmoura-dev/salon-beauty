@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Log;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient;
 use Stripe\Exception\SignatureVerificationException;
-use Stripe\Stripe;
 use Stripe\Webhook as StripeWebhook;
 
 class WebhookController extends Controller
@@ -59,17 +58,14 @@ class WebhookController extends Controller
         $tenant = Tenant::find($tenantId);
         if (! $tenant) return;
 
-        // Busca a assinatura real do Stripe para pegar o current_period_end correto
-        Stripe::setApiKey(config('services.stripe.secret'));
-        $stripeSub = \Stripe\Subscription::retrieve($session->subscription);
-
+        // current_period_end será atualizado pelo invoice.paid que chega junto
         Subscription::updateOrCreate(
             ['tenant_id' => $tenantId, 'gateway' => 'stripe'],
             [
                 'gateway_subscription_id' => $session->subscription,
                 'gateway_customer_id'     => $session->customer,
                 'status'                  => 'active',
-                'current_period_end'      => Carbon::createFromTimestamp($stripeSub->current_period_end),
+                'current_period_end'      => now()->addMonth(),
             ]
         );
 
