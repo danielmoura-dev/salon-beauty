@@ -26,6 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verification_code_expires_at' => 'datetime',
         'password'                           => 'hashed',
         'onboarding_completed'               => 'boolean',
+        'is_admin'                           => 'boolean',
     ];
 
     public function tenant(): BelongsTo

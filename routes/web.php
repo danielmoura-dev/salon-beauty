@@ -163,3 +163,10 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
 Route::get('/subscription/expired', fn() => view('subscription.expired'))->name('subscription.expired');
+// --- Admin panel (software owner only) ---
+use App\Http\Controllers\AdminController;
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/',                         [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::patch('/tenants/{tenant}/trial', [AdminController::class, 'extendTrial'])->name('tenants.trial');
+});
