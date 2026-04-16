@@ -150,8 +150,14 @@
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Categorias existentes</p>
                 <div class="rounded-xl border border-gray-100 divide-y divide-gray-50 max-h-44 overflow-y-auto">
                     <template x-for="cat in categories" :key="cat.id">
-                        <div class="flex items-center px-3 py-2.5">
+                        <div class="flex items-center justify-between px-3 py-2.5">
                             <span class="text-sm font-medium text-gray-700" x-text="cat.name"></span>
+                            <button type="button" @click="deleteCategory(cat)"
+                                class="ml-2 shrink-0 text-gray-300 hover:text-red-500 transition-colors">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
                         </div>
                     </template>
                 </div>
@@ -211,6 +217,24 @@ function servicesPage() {
             this.$dispatch('open-modal-category');
         },
 
+        async deleteCategory(cat) {
+            if (!confirm(`Remover a categoria "${cat.name}"?`)) return;
+            const res = await fetch(`/categories/${cat.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    Accept: 'application/json',
+                },
+            });
+            if (res.ok) {
+                this.categories = this.categories.filter(c => c.id !== cat.id);
+                if (this.selectedCategoryId === cat.id) this.selectedCategoryId = '';
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert(err.message || 'Erro ao remover categoria.');
+            }
+        },
+
         async saveCategoryForm() {
             if (!this.categoryFormName.trim()) { this.categoryFormError = 'Informe o nome.'; return; }
             this.categoryFormSaving = true; this.categoryFormError = '';
@@ -230,7 +254,6 @@ function servicesPage() {
                     this.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
                     this.selectedCategoryId = cat.id;
                     this.categoryFormName = '';
-                    this.$dispatch('close-modal-category');
                 } else {
                     const err = await res.json().catch(() => ({}));
                     this.categoryFormError = err.message || 'Erro ao salvar.';
