@@ -363,7 +363,7 @@
     <div x-show="showNew" x-cloak
          class="fixed inset-0 flex items-end sm:items-center justify-center p-4"
          style="z-index:100; display:none">
-        <div class="absolute inset-0 bg-black/40" @click="showNew = false"></div>
+        <div class="absolute inset-0 bg-black/40" @click="closeNew()"></div>
         <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl max-h-[90vh] flex flex-col"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-y-4"
@@ -372,7 +372,7 @@
 
             <div class="flex items-center justify-between px-6" style="padding-top: 1.75rem; padding-bottom: 1rem;">
                 <h2 class="text-lg font-semibold text-gray-900" x-text="editingId ? 'Editar Agendamento' : 'Novo Agendamento'"></h2>
-                <button @click="showNew = false" class="text-gray-400 hover:text-gray-600">
+                <button @click="closeNew()" class="text-gray-400 hover:text-gray-600">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -466,12 +466,12 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Início</label>
-                        <input type="time" x-model="form.start_time" step="900" @change="recalcEndTime()"
+                        <input type="time" x-model="form.start_time" @change="recalcEndTime()"
                                class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fim</label>
-                        <input type="time" x-model="form.end_time" step="900"
+                        <input type="time" x-model="form.end_time"
                             class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                 </div>
@@ -508,7 +508,7 @@
                 <p x-show="formError" x-text="formError" class="text-sm text-red-500 text-center"></p>
 
                 <div class="flex gap-2 pt-2">
-                    <button type="button" @click="showNew = false"
+                    <button type="button" @click="closeNew()"
                         class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         Cancelar
                     </button>
@@ -748,7 +748,7 @@
                 {{-- Ações --}}
                 <div class="flex gap-2 pt-1">
                     <button x-show="detail?.order_id"
-                            @click="showDetail = false; $dispatch('open-order-modal', { orderId: detail.order_id })"
+                            @click="$dispatch('open-order-modal', { orderId: detail.order_id })"
                             class="flex-1 rounded-xl bg-primary-50 border border-primary-200 py-2.5 text-sm font-semibold
                                    text-primary-700 text-center hover:bg-primary-100">
                         Ver Comanda
@@ -823,6 +823,7 @@ function agenda() {
         // ── Estado geral ──────────────────────────────────────────────────
         showNew:         false,
         showDetail:      false,
+        returnToDetail:  false,
         showConflict:    false,
         conflictInfo:    [],
         saving:          false,
@@ -898,12 +899,23 @@ function agenda() {
             this.showPickClient = true;
         },
 
+        closeNew() {
+            this.showNew = false;
+            if (this.returnToDetail) {
+                this.returnToDetail = false;
+                this.showDetail     = true;
+            }
+        },
+
         // ── Fechar pickers sem perder o form de agendamento ───────────────
         closePickClient() {
             this.showPickClient = false;
             if (this.clientFormContext === 'fromForm') {
                 this.clientFormContext = null;
                 this.showNew = true;
+            } else if (this.returnToDetail) {
+                this.returnToDetail = false;
+                this.showDetail     = true;
             }
         },
 
@@ -1041,7 +1053,8 @@ function agenda() {
             const profId = this.detail.professional_id;
             const date   = this.detail.date?.substring(0, 10);
             const slot   = this.detail.start_time?.substring(0, 5);
-            this.showDetail = false;
+            this.returnToDetail = true;
+            this.showDetail     = false;
             this.openNewAppointment(profId, date, slot);
         },
 
@@ -1064,9 +1077,10 @@ function agenda() {
                                     || null;
             const svc = this.allServices.find(s => s.id === this.detail.service_id) || this.detail.service || null;
             this.selectedServices = svc ? [svc] : [];
-            this.formError  = '';
-            this.showDetail = false;
-            this.showNew    = true;
+            this.formError      = '';
+            this.returnToDetail = true;
+            this.showDetail     = false;
+            this.showNew        = true;
         },
 
         // ── Helpers de horário ────────────────────────────────────────────
@@ -1137,13 +1151,14 @@ function agenda() {
 
         // ── Detail ────────────────────────────────────────────────────────
         openDetail(appointment) {
-            this.detail = { ...appointment };
+            this.detail         = { ...appointment };
             if (this.statusOverrides[appointment.id] !== undefined) {
                 this.detail.status = this.statusOverrides[appointment.id];
             }
-            this.deleteAll     = false;
-            this.confirmDelete = false;
-            this.showDetail    = true;
+            this.deleteAll      = false;
+            this.confirmDelete  = false;
+            this.returnToDetail = false;
+            this.showDetail     = true;
         },
 
         async changeStatus(status) {
