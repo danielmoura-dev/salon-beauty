@@ -62,6 +62,23 @@
 
         @include('components.topbar')
 
+        {{-- Banner trial expirado --}}
+        @if (auth()->check() && ! auth()->user()->tenant->isActive())
+        <div class="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 min-w-0">
+                <svg class="h-4 w-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                <p class="text-sm text-amber-800">
+                    <span class="font-semibold">Trial expirado.</span>
+                    <span class="hidden sm:inline"> Assine um plano para voltar a usar todas as funcionalidades.</span>
+                </p>
+            </div>
+            <a href="{{ route('subscription.index') }}"
+               class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                Assinar agora
+            </a>
+        </div>
+        @endif
+
         <main class="flex-1 p-4 sm:p-6 lg:p-8">
 
             @if (session('success'))
@@ -147,6 +164,52 @@
             </div>
         </div>
     </div>
+
+{{-- Modal trial expirado (AJAX) --}}
+<div
+    x-data="{ show: false }"
+    @subscription-expired.window="show = true"
+    x-show="show"
+    x-transition.opacity
+    class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+    style="display:none"
+>
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+            <svg class="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+        </div>
+        <div>
+            <p class="font-semibold text-gray-900 text-lg">Trial expirado</p>
+            <p class="text-sm text-gray-500 mt-1">Assine um plano para continuar usando todas as funcionalidades.</p>
+        </div>
+        <div class="flex gap-3">
+            <button @click="show = false"
+                class="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Fechar
+            </button>
+            <a href="{{ route('subscription.index') }}"
+                class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 text-center">
+                Ver planos
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Intercepta todas as chamadas fetch — quando o backend retorna 402 (trial expirado),
+// dispara o evento que abre o modal acima.
+(function () {
+    var _fetch = window.fetch;
+    window.fetch = function () {
+        return _fetch.apply(this, arguments).then(function (response) {
+            if (response.status === 402) {
+                document.dispatchEvent(new CustomEvent('subscription-expired'));
+            }
+            return response;
+        });
+    };
+})();
+</script>
 
 </body>
 </html>
