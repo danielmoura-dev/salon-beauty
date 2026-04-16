@@ -105,7 +105,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     // Assinatura
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::post('/subscription/stripe', [SubscriptionController::class, 'checkoutStripe'])->name('subscription.stripe');
-    Route::post('/subscription/pix', [SubscriptionController::class, 'pixCheckout'])->name('subscription.pix');
+    Route::post('/subscription/pix', [SubscriptionController::class, 'pixCheckout'])->name('subscription.pix')->middleware('throttle:5,10');
     Route::get('/subscription/pix/status', [SubscriptionController::class, 'pixStatus'])->name('subscription.pix.status');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');
     Route::get('/subscription/portal', [SubscriptionController::class, 'stripePortal'])->name('subscription.portal');

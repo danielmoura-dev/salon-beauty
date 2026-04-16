@@ -123,7 +123,28 @@ class SubscriptionController extends Controller
     // ── PIX via Mercado Pago ────────────────────────────────────────
     public function pixCheckout(Request $request)
     {
-        $tenant = auth()->user()->tenant;
+        $tenant = auth()->user()->tenant->load('subscription');
+
+        // Reutiliza pagamento pendente existente (evita spam de QR codes)
+        if ($tenant->subscription?->gateway === 'mercadopago'
+            && $tenant->subscription->status === 'pending'
+            && $tenant->subscription->gateway_subscription_id
+        ) {
+            try {
+                MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+                $existing = (new PaymentClient())->get((int) $tenant->subscription->gateway_subscription_id);
+
+                if (in_array($existing->status, ['pending', 'in_process'])) {
+                    return response()->json([
+                        'payment_id'     => $existing->id,
+                        'qr_code'        => $existing->point_of_interaction->transaction_data->qr_code,
+                        'qr_code_base64' => $existing->point_of_interaction->transaction_data->qr_code_base64,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Pagamento expirado — cria um novo abaixo
+            }
+        }
 
         MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
 
