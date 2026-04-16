@@ -29,6 +29,11 @@
                     class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">E-mail do estabelecimento</label>
+                <input type="email" name="email" value="{{ $tenant->email }}"
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
                 <input type="tel" name="phone" value="{{ $tenant->phone }}"
                     class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
