@@ -27,8 +27,7 @@ class SubscriptionController extends Controller
         ) {
             try {
                 MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
-                $client  = new PaymentClient();
-                $payment = $client->get((int) $subscription->gateway_subscription_id);
+                $payment = (new PaymentClient())->get((int) $subscription->gateway_subscription_id);
 
                 if (in_array($payment->status, ['pending', 'in_process'])) {
                     $pixData = [
@@ -38,7 +37,7 @@ class SubscriptionController extends Controller
                     ];
                 }
             } catch (\Exception $e) {
-                // Pagamento expirado ou inválido — ignora, mostra botão de gerar novo
+                // Pagamento expirado — ignora, mostra botão de gerar novo
             }
         }
 
@@ -50,7 +49,7 @@ class SubscriptionController extends Controller
     {
         $tenant = auth()->user()->tenant->load('subscription');
 
-        // Já tem assinatura Stripe ativa → manda direto pro portal de gestão
+        // Já tem assinatura Stripe ativa → manda direto pro portal
         if ($tenant->subscription?->gateway === 'stripe'
             && in_array($tenant->subscription?->status, ['active', 'past_due'])
             && $tenant->stripe_customer_id
@@ -61,21 +60,42 @@ class SubscriptionController extends Controller
         Stripe::setApiKey(config('services.stripe.secret'));
 
         $params = [
-            'mode'                 => 'subscription',
-            'payment_method_types' => ['card'],
-            'line_items'           => [[
+            'mode'                  => 'subscription',
+            'payment_method_types'  => ['card'],
+            'line_items'            => [[
                 'price'    => config('services.stripe.price_id'),
                 'quantity' => 1,
             ]],
-            'metadata'             => ['tenant_id' => $tenant->id],
-            'success_url'          => route('subscription.success') . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'           => route('subscription.index'),
+            'metadata'              => ['tenant_id' => $tenant->id],
+            'success_url'           => route('subscription.success') . '?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url'            => route('subscription.index'),
             'allow_promotion_codes' => true,
         ];
 
-        // Reutiliza o customer Stripe existente para evitar duplicatas
+        // Reutiliza customer Stripe existente para evitar duplicatas
         if ($tenant->stripe_customer_id) {
             $params['customer'] = $tenant->stripe_customer_id;
+        }
+
+        // Se tem PIX ativo com período futuro, Stripe só começa a cobrar após esse período
+        // (o cliente não paga duas vezes pelo mesmo mês)
+        $pixSub = $tenant->subscription;
+        if ($pixSub?->gateway === 'mercadopago'
+            && $pixSub->status === 'active'
+            && $pixSub->current_period_end?->isFuture()
+        ) {
+            $params['subscription_data'] = [
+                'trial_end' => $pixSub->current_period_end->timestamp,
+            ];
+        }
+
+        // Se tem PIX pendente (QR não pago), cancela no MP antes de ir pro Stripe
+        if ($pixSub?->gateway === 'mercadopago'
+            && $pixSub->status === 'pending'
+            && $pixSub->gateway_subscription_id
+        ) {
+            $this->cancelMpPayment((int) $pixSub->gateway_subscription_id);
+            $pixSub->update(['status' => 'cancelled']);
         }
 
         $session = StripeSession::create($params);
@@ -83,7 +103,7 @@ class SubscriptionController extends Controller
         return redirect($session->url);
     }
 
-    // ── Stripe: portal de gestão (trocar cartão, cancelar, faturas) ─
+    // ── Stripe: portal de gestão ────────────────────────────────────
     public function stripePortal()
     {
         $tenant = auth()->user()->tenant;
@@ -92,23 +112,16 @@ class SubscriptionController extends Controller
             return back()->with('error', 'Nenhuma assinatura Stripe encontrada.');
         }
 
-        Stripe::setApiKey(config('services.stripe.secret'));
-
-        $session = StripePortalSession::create([
-            'customer'   => $tenant->stripe_customer_id,
-            'return_url' => route('subscription.index'),
-        ]);
-
-        return redirect($session->url);
+        return $this->redirectToPortal($tenant->stripe_customer_id);
     }
 
-    // ── Stripe: retorno após checkout concluído ─────────────────────
+    // ── Stripe: retorno após checkout ───────────────────────────────
     public function success(Request $request)
     {
         return view('app.settings.subscription-pending');
     }
 
-    // ── Stripe: cancelar (legacy — agora usa o portal) ──────────────
+    // ── Stripe: cancelar → portal (sem confirm() no browser) ───────
     public function cancelStripe(Request $request)
     {
         $tenant = auth()->user()->tenant;
@@ -124,6 +137,13 @@ class SubscriptionController extends Controller
     public function pixCheckout(Request $request)
     {
         $tenant = auth()->user()->tenant->load('subscription');
+
+        // Não gera PIX se já tem Stripe ativo
+        if ($tenant->subscription?->gateway === 'stripe'
+            && in_array($tenant->subscription?->status, ['active', 'past_due'])
+        ) {
+            return response()->json(['error' => 'Você já tem uma assinatura ativa via cartão.'], 422);
+        }
 
         // Reutiliza pagamento pendente existente (evita spam de QR codes)
         if ($tenant->subscription?->gateway === 'mercadopago'
@@ -148,12 +168,14 @@ class SubscriptionController extends Controller
 
         MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
 
-        $client  = new PaymentClient();
-        $payment = $client->create([
+        $payment = (new PaymentClient())->create([
             'transaction_amount' => (float) config('app.plan_price', 57.90),
             'description'        => 'Salon Beauty — Plano Mensal',
             'payment_method_id'  => 'pix',
             'payer'              => [
+                // O Mercado Pago usa este email apenas para registro interno.
+                // Para desabilitar o e-mail de confirmação enviado ao pagador,
+                // acesse: MP Dashboard → Configurações → Notificações → desabilitar "Confirmação de pagamento".
                 'email'      => $tenant->email,
                 'first_name' => $tenant->name,
             ],
@@ -201,5 +223,15 @@ class SubscriptionController extends Controller
         ]);
 
         return redirect($session->url);
+    }
+
+    private function cancelMpPayment(int $paymentId): void
+    {
+        try {
+            MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+            (new PaymentClient())->cancel($paymentId);
+        } catch (\Exception $e) {
+            // Ignora se já expirou ou foi pago — não é erro crítico
+        }
     }
 }

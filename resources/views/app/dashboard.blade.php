@@ -47,7 +47,7 @@
                     {{ $dLeft > 0 ? "Faltam {$dLeft} dias." : 'Expira hoje.' }}
                 </p>
             </div>
-            <a href="{{ route('settings') }}"
+            <a href="{{ route('subscription.index') }}"
                class="shrink-0 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700">
                 Ver planos
             </a>

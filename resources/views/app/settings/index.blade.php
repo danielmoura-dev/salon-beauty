@@ -165,42 +165,118 @@
         </form>
     </div>
 
-    {{-- Assinatura --}}
-    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="font-semibold text-gray-900">Assinatura</h2>
-        </div>
-        <div class="p-5">
-            @if ($subscription && $subscription->isActive())
-                <div class="flex items-center gap-3 mb-4">
-                    <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-                    <span class="text-sm font-semibold text-green-700">Plano Full — Ativo</span>
-                    <span class="text-xs text-gray-400 ml-auto">
-                        via {{ $subscription->gateway === 'stripe' ? 'Cartão' : 'Pix' }}
-                        · renova {{ $subscription->current_period_end?->format('d/m/Y') }}
-                    </span>
-                </div>
-                @if ($subscription->gateway === 'stripe')
-                    <form method="POST" action="{{ route('subscription.cancel') }}">
-                        @csrf
-                        <button type="submit"
-                            onclick="return confirm('Cancelar assinatura? Você terá acesso até o fim do período pago.')"
-                            class="text-sm text-red-500 hover:underline">
-                            Cancelar assinatura
-                        </button>
-                    </form>
+    {{-- Assinatura (accordion) --}}
+    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden" x-data="{ open: false }">
+
+        {{-- Cabeçalho clicável --}}
+        <button @click="open = !open" type="button"
+                class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-3">
+                @if ($subscription?->isActive())
+                    <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                    <span class="font-semibold text-gray-900">Assinatura</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ativa</span>
+                @elseif ($tenant->plan_status === 'trial')
+                    <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                    <span class="font-semibold text-gray-900">Assinatura</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Trial</span>
+                @else
+                    <span class="h-2 w-2 rounded-full bg-red-400"></span>
+                    <span class="font-semibold text-gray-900">Assinatura</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">Inativa</span>
                 @endif
-            @else
-                <p class="text-sm text-gray-500 mb-4">
-                    Você está no período de teste.
-                    @if (auth()->user()->tenant->trial_ends_at)
-                        @php $dLeft = (int) today()->diffInDays(auth()->user()->tenant->trial_ends_at->copy()->startOfDay(), false); @endphp
-                        Expira em <strong>{{ $dLeft > 0 ? "{$dLeft} dias" : 'hoje' }}</strong>.
+            </div>
+            <svg :class="open ? 'rotate-180' : ''"
+                 class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+
+        {{-- Corpo expansível --}}
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-1"
+             class="border-t border-gray-100 p-5 space-y-4">
+
+            {{-- Bloco de informações do plano --}}
+            <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold text-gray-800">Plano Full</span>
+                    <span class="text-sm font-bold text-gray-900">R$ 57,90 / mês</span>
+                </div>
+
+                <div class="space-y-1 text-xs text-gray-500">
+                    <div class="flex justify-between">
+                        <span>Status</span>
+                        @if ($subscription?->isActive())
+                            <span class="font-semibold text-green-600">Ativa</span>
+                        @elseif ($tenant->plan_status === 'trial')
+                            @php $dLeft = (int) today()->diffInDays($tenant->trial_ends_at->copy()->startOfDay(), false); @endphp
+                            <span class="font-semibold text-amber-600">Trial — {{ $dLeft > 0 ? "expira em {$dLeft} dias" : 'expira hoje' }}</span>
+                        @else
+                            <span class="font-semibold text-red-500">Inativa</span>
+                        @endif
+                    </div>
+
+                    @if ($subscription?->isActive())
+                        <div class="flex justify-between">
+                            <span>Forma de pagamento</span>
+                            <span class="font-semibold text-gray-700">
+                                {{ $subscription->gateway === 'stripe' ? 'Cartão de crédito (automático)' : 'PIX (renovação manual)' }}
+                            </span>
+                        </div>
+                        @if ($subscription->current_period_end)
+                            <div class="flex justify-between">
+                                <span>{{ $subscription->gateway === 'stripe' ? 'Próxima cobrança' : 'Válido até' }}</span>
+                                <span class="font-semibold text-gray-700">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
+                            </div>
+                        @endif
                     @endif
-                </p>
+                </div>
+            </div>
+
+            {{-- Ações --}}
+            @if ($subscription?->gateway === 'stripe' && in_array($subscription->status, ['active', 'past_due']))
+                <a href="{{ route('subscription.portal') }}"
+                   class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">Gerenciar assinatura</p>
+                        <p class="text-xs text-gray-400">Trocar cartão, ver faturas, cancelar</p>
+                    </div>
+                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </a>
                 <a href="{{ route('subscription.index') }}"
-                   class="inline-block rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
-                    Ver planos e assinar
+                   class="block text-center text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+                    Trocar para PIX
+                </a>
+
+            @elseif ($subscription?->gateway === 'mercadopago' && $subscription->status === 'active')
+                <a href="{{ route('subscription.index') }}"
+                   class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">Renovar assinatura</p>
+                        <p class="text-xs text-gray-400">Gerar novo QR PIX para o próximo mês</p>
+                    </div>
+                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </a>
+                <a href="{{ route('subscription.index') }}"
+                   class="block text-center text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+                    Trocar para cartão de crédito
+                </a>
+
+            @else
+                <a href="{{ route('subscription.index') }}"
+                   class="flex items-center justify-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition-colors">
+                    {{ $tenant->plan_status === 'trial' ? 'Ver planos e assinar' : 'Reativar assinatura' }}
                 </a>
             @endif
         </div>

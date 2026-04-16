@@ -69,6 +69,12 @@ class WebhookController extends Controller
             ]
         );
 
+        // Cancela qualquer assinatura PIX ativa ou pendente — Stripe assumiu
+        Subscription::where('tenant_id', $tenantId)
+            ->where('gateway', 'mercadopago')
+            ->whereIn('status', ['active', 'pending'])
+            ->update(['status' => 'cancelled']);
+
         // Salva o customer ID no tenant para reutilizar em checkouts futuros
         $tenant->update([
             'plan_status'        => 'active',
@@ -224,6 +230,17 @@ class WebhookController extends Controller
 
             $tenant = Tenant::find($tenantId);
             if (! $tenant) return;
+
+            // Se já tem Stripe ativo, ignora o PIX (pode ser QR antigo pago por engano)
+            $hasActiveStripe = Subscription::where('tenant_id', $tenantId)
+                ->where('gateway', 'stripe')
+                ->where('status', 'active')
+                ->exists();
+
+            if ($hasActiveStripe) {
+                Log::info("MP payment {$paymentId}: tenant {$tenantId} já tem Stripe ativo — ignorando PIX.");
+                return;
+            }
 
             Subscription::updateOrCreate(
                 ['tenant_id' => $tenantId, 'gateway' => 'mercadopago'],
