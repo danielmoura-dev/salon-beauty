@@ -15,8 +15,32 @@ class SubscriptionController extends Controller
     {
         $tenant       = auth()->user()->tenant->load('subscription');
         $subscription = $tenant->subscription;
+        $pixData      = null;
 
-        return view('app.settings.subscription', compact('tenant', 'subscription'));
+        // Se há um pagamento PIX pendente, recupera o QR do MP para não perder ao navegar
+        if ($subscription
+            && $subscription->gateway === 'mercadopago'
+            && $subscription->status === 'pending'
+            && $subscription->gateway_subscription_id
+        ) {
+            try {
+                MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+                $client  = new PaymentClient();
+                $payment = $client->get((int) $subscription->gateway_subscription_id);
+
+                if (in_array($payment->status, ['pending', 'in_process'])) {
+                    $pixData = [
+                        'payment_id'     => $payment->id,
+                        'qr_code'        => $payment->point_of_interaction->transaction_data->qr_code,
+                        'qr_code_base64' => $payment->point_of_interaction->transaction_data->qr_code_base64,
+                    ];
+                }
+            } catch (\Exception $e) {
+                // Pagamento expirado ou inválido — ignora, mostra botão de gerar novo
+            }
+        }
+
+        return view('app.settings.subscription', compact('tenant', 'subscription', 'pixData'));
     }
 
     // ── Stripe (cartão recorrente) ──────────────────────────────────

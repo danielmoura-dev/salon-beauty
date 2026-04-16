@@ -2,7 +2,7 @@
 @section('title', 'Assinar — Salon Beauty')
 
 @section('content')
-<div class="max-w-lg mx-auto space-y-6" x-data="pixPayment()">
+<div class="max-w-lg mx-auto space-y-6" x-data="pixPayment({{ json_encode($pixData) }})">
 
     <div class="text-center">
         <h1 class="text-2xl font-bold text-gray-900">Plano Full</h1>
@@ -130,15 +130,20 @@
 </div>
 
 <script>
-function pixPayment() {
+function pixPayment(existing) {
     return {
         loading:      false,
-        qrCode:       null,
-        qrCodeBase64: null,
-        paymentId:    null,
+        qrCode:       existing ? existing.qr_code        : null,
+        qrCodeBase64: existing ? existing.qr_code_base64 : null,
+        paymentId:    existing ? existing.payment_id     : null,
         paid:         false,
         copied:       false,
         pollTimer:    null,
+
+        init() {
+            // Se já há QR pendente, inicia polling imediatamente
+            if (this.qrCode) this.startPolling();
+        },
 
         generate() {
             const self = this;
