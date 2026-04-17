@@ -30,7 +30,7 @@ class AppointmentController extends Controller
         $appointments = Appointment::with(['client', 'professional', 'service', 'order.items'])
             ->whereDate('date', $date)
             ->whereIn('professional_id', $professionals->pluck('id'))
-            ->whereNotIn('status', ['cancelled'])
+
             ->get()
             ->groupBy('professional_id');
 
