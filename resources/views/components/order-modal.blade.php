@@ -485,6 +485,7 @@
                             <div x-show="!entry.locked">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
                                 <input type="number" x-model.number="entry.amount" step="0.01" min="0"
+                                    @input="entry.baseAmount = entry.feePct > 0 ? parseFloat((Number(entry.amount) / (1 + entry.feePct / 100)).toFixed(2)) : Number(entry.amount)"
                                     class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                             </div>
                         </div>
