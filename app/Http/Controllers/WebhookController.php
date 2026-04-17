@@ -132,9 +132,12 @@ class WebhookController extends Controller
             default              => $sub->status,
         };
 
+        $cancelAtPeriodEnd = (bool) ($stripeSub->cancel_at_period_end ?? false);
+
         $sub->update([
-            'status'             => $status,
-            'current_period_end' => Carbon::createFromTimestamp($stripeSub->current_period_end),
+            'status'               => $status,
+            'current_period_end'   => Carbon::createFromTimestamp($stripeSub->current_period_end),
+            'cancel_at_period_end' => $cancelAtPeriodEnd,
         ]);
 
         $tenantStatus = match ($status) {
@@ -145,7 +148,8 @@ class WebhookController extends Controller
 
         $sub->tenant->update(['plan_status' => $tenantStatus]);
 
-        Log::info("Stripe subscription updated para tenant {$sub->tenant_id}: {$status}");
+        $cancelMsg = $cancelAtPeriodEnd ? ' (cancelamento agendado para fim do período)' : '';
+        Log::info("Stripe subscription updated para tenant {$sub->tenant_id}: {$status}{$cancelMsg}");
     }
 
     private function handleStripeSubscriptionDeleted(object $stripeSub): void

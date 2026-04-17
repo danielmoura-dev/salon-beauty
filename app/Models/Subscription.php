@@ -13,10 +13,12 @@ class Subscription extends Model
     protected $fillable = [
         'tenant_id', 'gateway', 'gateway_subscription_id',
         'gateway_customer_id', 'status', 'current_period_end',
+        'cancel_at_period_end',
     ];
 
     protected $casts = [
-        'current_period_end' => 'date',
+        'current_period_end'  => 'date',
+        'cancel_at_period_end' => 'boolean',
     ];
 
     public function tenant(): BelongsTo

@@ -213,7 +213,9 @@
                 <div class="space-y-1 text-xs text-gray-500">
                     <div class="flex justify-between">
                         <span>Status</span>
-                        @if ($subscription?->isActive())
+                        @if ($subscription?->cancel_at_period_end)
+                            <span class="font-semibold text-amber-600">Cancelamento agendado</span>
+                        @elseif ($subscription?->isActive())
                             <span class="font-semibold text-green-600">Ativa</span>
                         @elseif ($tenant->plan_status === 'trial')
                             @php $dLeft = (int) today()->diffInDays($tenant->trial_ends_at->copy()->startOfDay(), false); @endphp
@@ -232,8 +234,13 @@
                         </div>
                         @if ($subscription->current_period_end)
                             <div class="flex justify-between">
-                                <span>{{ $subscription->gateway === 'stripe' ? 'Próxima cobrança' : 'Válido até' }}</span>
-                                <span class="font-semibold text-gray-700">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
+                                @if ($subscription->cancel_at_period_end)
+                                    <span class="text-amber-600">Acesso até</span>
+                                    <span class="font-semibold text-amber-600">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
+                                @else
+                                    <span>{{ $subscription->gateway === 'stripe' ? 'Próxima cobrança' : 'Válido até' }}</span>
+                                    <span class="font-semibold text-gray-700">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
+                                @endif
                             </div>
                         @endif
                     @endif

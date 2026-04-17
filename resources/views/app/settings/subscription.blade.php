@@ -11,11 +11,17 @@
 
     {{-- ── Assinatura Stripe ATIVA ─────────────────────────────── --}}
     @if ($subscription?->gateway === 'stripe' && in_array($subscription->status, ['active', 'past_due']))
-        <div class="rounded-2xl border-2 {{ $subscription->status === 'active' ? 'border-green-400 bg-green-50' : 'border-amber-400 bg-amber-50' }} p-6 space-y-4">
+        @php $cancelling = $subscription->cancel_at_period_end ?? false; @endphp
+        <div class="rounded-2xl border-2 {{ $cancelling ? 'border-amber-400 bg-amber-50' : ($subscription->status === 'active' ? 'border-green-400 bg-green-50' : 'border-amber-400 bg-amber-50') }} p-6 space-y-4">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-500">Status da assinatura</p>
-                    @if ($subscription->status === 'active')
+                    @if ($cancelling)
+                        <p class="text-lg font-bold text-amber-700 flex items-center gap-2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                            Cancelamento agendado
+                        </p>
+                    @elseif ($subscription->status === 'active')
                         <p class="text-lg font-bold text-green-700 flex items-center gap-2">
                             <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
                             Ativa — Cobrança automática mensal
@@ -33,15 +39,21 @@
             </div>
 
             @if ($subscription->current_period_end)
-                <p class="text-sm text-gray-600">
-                    Próxima cobrança em
-                    <span class="font-semibold">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
-                </p>
+                @if ($cancelling)
+                    <p class="text-sm text-amber-800 bg-amber-100 border border-amber-200 rounded-xl px-3 py-2">
+                        Você tem acesso até <span class="font-semibold">{{ $subscription->current_period_end->format('d/m/Y') }}</span>. Após essa data a assinatura encerra e nenhuma cobrança será feita.
+                    </p>
+                @else
+                    <p class="text-sm text-gray-600">
+                        Próxima cobrança em
+                        <span class="font-semibold">{{ $subscription->current_period_end->format('d/m/Y') }}</span>
+                    </p>
+                @endif
             @endif
 
             <a href="{{ route('subscription.portal') }}"
                class="inline-flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm">
-                Gerenciar assinatura (trocar cartão, cancelar, faturas)
+                Gerenciar assinatura (trocar cartão, reativar, faturas)
             </a>
         </div>
 
