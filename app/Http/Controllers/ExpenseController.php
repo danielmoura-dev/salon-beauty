@@ -41,6 +41,7 @@ class ExpenseController extends Controller
             'category_id'   => ['nullable', 'uuid', 'exists:categories,id'],
             'payment_type'  => ['required', 'in:one_time,installment,recurring'],
             'installments'  => ['nullable', 'integer', 'min:2', 'max:60'],
+            'months'        => ['nullable', 'integer', 'min:2', 'max:120'],
             'due_date'      => ['required', 'date'],
             'is_paid'       => ['boolean'],
             'notes'         => ['nullable', 'string'],
@@ -52,7 +53,7 @@ class ExpenseController extends Controller
         if ($data['payment_type'] === 'installment' && ($data['installments'] ?? 0) > 1) {
             $this->createInstallments($data);
         } elseif ($data['payment_type'] === 'recurring') {
-            $this->createRecurring($data);
+            $this->createRecurring($data, (int) ($request->input('months', 12)));
         } else {
             Expense::create($data);
         }
@@ -87,6 +88,18 @@ class ExpenseController extends Controller
         return back()->with('success', 'Despesa removida.');
     }
 
+    public function cancelRecurrence(Expense $expense)
+    {
+        if ($expense->recurrence_group_id) {
+            Expense::where('recurrence_group_id', $expense->recurrence_group_id)
+                ->where('is_paid', false)
+                ->where('due_date', '>=', $expense->due_date)
+                ->delete();
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
     public function togglePaid(Expense $expense)
     {
         $expense->update([
@@ -97,12 +110,12 @@ class ExpenseController extends Controller
         return back()->with('success', $expense->is_paid ? 'Marcada como paga.' : 'Marcada como pendente.');
     }
 
-    private function createRecurring(array $data): void
+    private function createRecurring(array $data, int $months = 12): void
     {
         $groupId  = Str::uuid();
         $baseDate = Carbon::parse($data['due_date']);
 
-        for ($i = 0; $i < 12; $i++) {
+        for ($i = 0; $i < $months; $i++) {
             Expense::create([
                 ...$data,
                 'recurrence_group_id' => $groupId,

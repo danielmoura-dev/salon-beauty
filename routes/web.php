@@ -158,6 +158,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
     Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     Route::post('/expenses/{expense}/toggle', [ExpenseController::class, 'togglePaid'])->name('expenses.toggle');
+    Route::delete('/expenses/{expense}/cancel-recurrence', [ExpenseController::class, 'cancelRecurrence'])->name('expenses.cancel-recurrence');
 
     // Relatórios
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');

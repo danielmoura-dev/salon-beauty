@@ -220,6 +220,24 @@
                     class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
             </x-form-field>
 
+            <x-form-field label="Número de meses" x-show="paymentType === 'recurring' && !editing">
+                <input type="number" name="months" min="2" max="120" value="12"
+                    class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+            </x-form-field>
+
+            {{-- Cancelar próximas recorrências --}}
+            <div x-show="editing && editing.recurrence_group_id"
+                 class="rounded-xl border border-red-100 bg-red-50 px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm font-medium text-red-700">Cancelar recorrência</p>
+                    <p class="text-xs text-red-400 mt-0.5">Exclui esta e todas as próximas ocorrências não pagas</p>
+                </div>
+                <button type="button" @click="cancelRecurrence(editing)"
+                    class="shrink-0 rounded-xl bg-red-500 text-white text-xs font-semibold px-3 py-1.5 hover:bg-red-600 transition-colors">
+                    Cancelar próximas
+                </button>
+            </div>
+
             <label class="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
                 <span class="text-sm font-medium text-gray-700">Já foi paga</span>
                 <input type="checkbox" name="is_paid" value="1"
@@ -351,6 +369,24 @@ function expensesPage() {
                 }
             } catch { this.categoryFormError = 'Erro de conexão.'; }
             finally  { this.categoryFormSaving = false; }
+        },
+
+        async cancelRecurrence(expense) {
+            window.__confirmCallback = async () => {
+                const res = await fetch(`/expenses/${expense.id}/cancel-recurrence`, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content },
+                });
+                if (res.ok) {
+                    this.$dispatch('close-modal-expense');
+                    window.location.reload();
+                }
+            };
+            window.dispatchEvent(new CustomEvent('open-confirm', { detail: {
+                title:   'Cancelar recorrência',
+                message: 'Isso vai excluir esta e todas as próximas ocorrências não pagas. Confirmar?',
+                label:   'Cancelar recorrência',
+            }}));
         },
 
         async deleteCategory(id) {
