@@ -1,6 +1,6 @@
 @props(['label', 'error' => null])
 
-<div>
+<div {{ $attributes->except(['label', 'error']) }}>
     <label class="block text-sm font-medium text-gray-700 mb-1">{{ $label }}</label>
     {{ $slot }}
     @if ($error)

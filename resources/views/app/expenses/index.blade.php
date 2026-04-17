@@ -9,16 +9,57 @@
         <h1 class="text-2xl font-bold text-gray-900">Despesas</h1>
 
         {{-- Navegação de mês --}}
-        <div class="flex items-center gap-1 sm:mx-auto">
+        <div class="flex items-center gap-1 sm:mx-auto" x-data="monthPicker({{ $month->month }}, {{ $month->year }})">
             <a href="{{ route('expenses', ['month' => $month->copy()->subMonth()->format('Y-m')]) }}"
                class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
                 </svg>
             </a>
-            <div class="text-center px-2">
-                <p class="text-sm font-semibold text-gray-800">{{ $month->translatedFormat('F Y') }}</p>
+
+            {{-- Botão que abre o picker --}}
+            <div class="relative">
+                <button @click="open = !open" @click.outside="open = false"
+                    class="text-center px-3 py-1.5 rounded-xl hover:bg-gray-100 transition-colors">
+                    <p class="text-sm font-semibold text-gray-800 capitalize">{{ $month->translatedFormat('F Y') }}</p>
+                </button>
+
+                {{-- Popover --}}
+                <div x-show="open" x-transition
+                    class="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 bg-white border border-gray-200 rounded-2xl shadow-lg p-4 w-64"
+                    @click.outside="open = false">
+
+                    {{-- Seletor de ano --}}
+                    <div class="flex items-center justify-between mb-3">
+                        <button @click="pickerYear--" class="rounded-lg p-1 hover:bg-gray-100 text-gray-500">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+                            </svg>
+                        </button>
+                        <span class="text-sm font-semibold text-gray-800" x-text="pickerYear"></span>
+                        <button @click="pickerYear++" class="rounded-lg p-1 hover:bg-gray-100 text-gray-500">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Grid de meses --}}
+                    <div class="grid grid-cols-3 gap-1">
+                        <template x-for="(m, i) in months" :key="i">
+                            <button
+                                @click="navigate(i + 1)"
+                                :class="(i + 1) === pickerMonth && pickerYear === currentYear
+                                    ? 'bg-primary-600 text-white font-semibold'
+                                    : 'text-gray-700 hover:bg-gray-100'"
+                                class="rounded-xl py-1.5 text-xs transition-colors"
+                                x-text="m">
+                            </button>
+                        </template>
+                    </div>
+                </div>
             </div>
+
             <a href="{{ route('expenses', ['month' => $month->copy()->addMonth()->format('Y-m')]) }}"
                class="rounded-xl p-2 hover:bg-gray-100 text-gray-500 transition-colors">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -166,6 +207,13 @@
                     <option value="recurring">Recorrente</option>
                 </select>
             </x-form-field>
+
+            {{-- Badge read-only quando editando --}}
+            <div x-show="editing" class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-700">Forma de pagamento:</span>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600"
+                    x-text="{one_time:'À vista', installment:'Parcelado', recurring:'Recorrente'}[paymentType] ?? paymentType"></span>
+            </div>
 
             <x-form-field label="Número de parcelas" x-show="paymentType === 'installment' && !editing">
                 <input type="number" name="installments" min="2" max="60" value="2"
@@ -321,6 +369,22 @@ function expensesPage() {
                 message: 'Remover esta categoria de despesa?',
                 label:   'Remover',
             }}));
+        },
+    }
+}
+
+function monthPicker(currentMonth, currentYear) {
+    return {
+        open: false,
+        pickerMonth: currentMonth,
+        pickerYear: currentYear,
+        currentYear: currentYear,
+        months: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+
+        navigate(month) {
+            const y = String(this.pickerYear);
+            const m = String(month).padStart(2, '0');
+            window.location.href = `{{ url('/expenses') }}?month=${y}-${m}`;
         },
     }
 }
