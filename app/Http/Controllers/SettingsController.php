@@ -17,24 +17,6 @@ class SettingsController extends Controller
         return view('app.settings.index', compact('tenant', 'subscription'));
     }
 
-    public function updateAvatar(Request $request)
-    {
-        $request->validate([
-            'avatar' => ['required', 'image', 'max:2048'],
-        ]);
-
-        $user = auth()->user();
-
-        if ($user->avatar) {
-            Storage::disk('public')->delete($user->avatar);
-        }
-
-        $path = $request->file('avatar')->store("avatars/{$user->tenant_id}", 'public');
-        $user->update(['avatar' => $path]);
-
-        return back()->with('success', 'Foto de perfil atualizada!');
-    }
-
     public function updateProfile(Request $request)
     {
         $tenant = auth()->user()->tenant;

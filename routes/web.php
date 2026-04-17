@@ -99,7 +99,6 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     // Configurações
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('/settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.profile');
-    Route::post('/settings/avatar', [SettingsController::class, 'updateAvatar'])->name('settings.avatar');
     Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
     Route::post('/settings/advanced', [SettingsController::class, 'updateAdvanced'])->name('settings.advanced');
 

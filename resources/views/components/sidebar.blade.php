@@ -11,12 +11,12 @@
 
 {{-- Perfil resumido --}}
 <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-    @if (auth()->user()->avatar)
-        <img src="{{ Storage::url(auth()->user()->avatar) }}"
-             class="h-9 w-9 rounded-full object-cover" alt="Avatar">
+    @if (auth()->user()->tenant->logo)
+        <img src="{{ Storage::url(auth()->user()->tenant->logo) }}"
+             class="h-9 w-9 rounded-full object-cover" alt="Logo">
     @else
         <div class="h-9 w-9 rounded-full bg-accent-100 flex items-center justify-center text-accent-600 font-semibold text-sm">
-            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+            {{ strtoupper(substr(auth()->user()->tenant->name, 0, 1)) }}
         </div>
     @endif
     <div class="min-w-0">
