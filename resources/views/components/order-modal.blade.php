@@ -1105,7 +1105,8 @@ function orderModal() {
             });
             this.saving = false;
             if (res.ok) {
-                window.dispatchEvent(new CustomEvent('order-deleted', { detail: { orderId } }));
+                this.order.status = 'cancelled';
+                window.dispatchEvent(new CustomEvent('order-deleted', { detail: { orderId, orderStatus: 'open' } }));
                 this.close();
             }
         },
