@@ -450,6 +450,7 @@
                             <div x-show="!entry.locked" class="grid grid-cols-3 gap-1.5">
                                 <template x-for="[val, label] in Object.entries(paymentMethods)" :key="val">
                                     <button type="button"
+                                            x-show="val !== 'credit' || clientCredit > 0"
                                             @click="selectMethod(entry, val)"
                                             :class="entry.method === val
                                                 ? 'border-primary-500 bg-primary-50 text-primary-700'
