@@ -235,9 +235,7 @@
                 </button>
             </div>
 
-            <form action="{{ route('orders.store') }}" method="POST" class="px-6 pt-4 pb-6 space-y-4">
-                @csrf
-                <input type="hidden" name="client_id" :value="selectedClientId">
+            <div class="px-6 pt-4 pb-6 space-y-4">
 
                 {{-- ESTADO: cliente já selecionado --}}
                 <div x-show="selectedClient">
@@ -315,7 +313,7 @@
                 {{-- Observações --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                    <textarea name="notes" rows="2"
+                    <textarea x-model="newOrderNotes" rows="2"
                         class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500"></textarea>
                 </div>
 
@@ -325,12 +323,13 @@
                         class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         Cancelar
                     </button>
-                    <button type="submit" :disabled="!selectedClientId"
+                    <button type="button" @click="createOrder()" :disabled="!selectedClientId || creatingOrder"
                         class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed">
-                        Abrir Comanda
+                        <span x-show="!creatingOrder">Abrir Comanda</span>
+                        <span x-show="creatingOrder">Aguarde…</span>
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -340,6 +339,8 @@
 function ordersPage() {
     return {
         showNew:          false,
+        creatingOrder:    false,
+        newOrderNotes:    '',
         showVendas:       false,
         vendasTab:        'item',
         activeTab:        'open',
@@ -427,7 +428,32 @@ function ordersPage() {
             this.selectedClient   = null;
             this.selectedClientId = null;
             this.clientSearch     = '';
+            this.newOrderNotes    = '';
             this.displayLimit     = 50;
+        },
+
+        async createOrder() {
+            if (!this.selectedClientId || this.creatingOrder) return;
+            this.creatingOrder = true;
+            try {
+                const res = await fetch('{{ route('orders.store') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({ client_id: this.selectedClientId, notes: this.newOrderNotes }),
+                });
+                if (res.ok) {
+                    const order = await res.json();
+                    this.closeNew();
+                    this.openCount++;
+                    window.dispatchEvent(new CustomEvent('open-order-modal', { detail: { orderId: order.id } }));
+                }
+            } finally {
+                this.creatingOrder = false;
+            }
         },
     }
 }

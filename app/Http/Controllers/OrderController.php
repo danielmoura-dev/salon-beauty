@@ -88,6 +88,11 @@ class OrderController extends Controller
             'total'  => 0,
         ]);
 
+        if ($request->expectsJson()) {
+            $order->load(['client', 'items.professional', 'payments', 'appointment']);
+            return response()->json($order);
+        }
+
         return redirect()->route('orders.show', $order)
             ->with('success', 'Comanda aberta!');
     }
