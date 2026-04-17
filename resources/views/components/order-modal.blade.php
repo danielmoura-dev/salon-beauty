@@ -822,7 +822,8 @@ function orderModal() {
 
         openAddItem() {
             this.itemError              = '';
-            this.itemForm               = { type: 'service', description: '', qty: 1, unit_price: 0, product_id: null, professional_id: '', commission_pct: 0, has_commission: true };
+            const defaultProfId         = this.order?.appointment?.professional_id ?? '';
+            this.itemForm               = { type: 'service', description: '', qty: 1, unit_price: 0, product_id: null, professional_id: defaultProfId, commission_pct: 0, has_commission: true };
             this.pickerSelectedServices = [];
             this.pickerSelectedProducts = [];
             this.view                   = 'addItem';
