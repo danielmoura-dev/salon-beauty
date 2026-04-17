@@ -6,6 +6,45 @@
 
     <h1 class="text-2xl font-bold text-gray-900">Configurações</h1>
 
+    {{-- Foto de perfil --}}
+    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="font-semibold text-gray-900">Foto de perfil</h2>
+        </div>
+        <div class="p-5">
+            <form method="POST" action="{{ route('settings.avatar') }}"
+                  enctype="multipart/form-data"
+                  x-data="imageCropper('avatar-input', 'avatar-preview', 'form-avatar')"
+                  id="form-avatar">
+                @csrf
+                <div class="flex items-center gap-5">
+                    <div id="avatar-preview"
+                         class="h-20 w-20 rounded-full border-2 border-dashed border-gray-300
+                                flex items-center justify-center overflow-hidden cursor-pointer shrink-0
+                                hover:border-primary-400 transition-colors bg-gray-50"
+                         @click="document.getElementById('avatar-input').click()">
+                        @if (auth()->user()->avatar)
+                            <img src="{{ Storage::url(auth()->user()->avatar) }}" class="h-full w-full object-cover" alt="Avatar">
+                        @else
+                            <svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                            </svg>
+                        @endif
+                    </div>
+                    <div class="space-y-1">
+                        <label class="cursor-pointer text-sm text-primary-600 font-medium hover:underline">
+                            {{ auth()->user()->avatar ? 'Trocar foto' : 'Adicionar foto' }}
+                            <input id="avatar-input" type="file" name="avatar" accept="image/*" class="hidden">
+                        </label>
+                        <p class="text-xs text-gray-400">Aparece na barra lateral. JPG ou PNG, máx. 2 MB.</p>
+                        @error('avatar')<p class="text-xs text-red-500">{{ $message }}</p>@enderror
+                    </div>
+                </div>
+                @include('components.image-cropper')
+            </form>
+        </div>
+    </div>
+
     {{-- Dados do estabelecimento --}}
     <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100">

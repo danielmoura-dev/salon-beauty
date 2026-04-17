@@ -69,7 +69,7 @@
 @once
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script>
-function imageCropper(fileInputId, previewId) {
+function imageCropper(fileInputId, previewId, autoSubmitFormId) {
     return {
         cropOpen: false,
         _cropper: null,
@@ -149,6 +149,11 @@ function imageCropper(fileInputId, previewId) {
                 self._cropper.destroy();
                 self._cropper = null;
                 self.cropOpen = false;
+
+                if (autoSubmitFormId) {
+                    const form = document.getElementById(autoSubmitFormId);
+                    if (form) form.submit();
+                }
             }, 'image/jpeg', 0.92);
         },
 
