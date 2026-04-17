@@ -414,15 +414,14 @@
                             <span class="text-gray-500">Valor inserido</span>
                             <span class="font-semibold text-blue-600" x-text="fmt(totalEntering())"></span>
                         </div>
-                        {{-- Troco/Falta: só aparece quando o usuário digitou algo --}}
-                        <div x-show="totalEntering() > 0"
-                             class="flex items-center justify-between border-t border-gray-200 pt-1.5">
+                        {{-- A pagar / Falta / Troco --}}
+                        <div class="flex items-center justify-between border-t border-gray-200 pt-1.5">
                             <span class="font-semibold"
-                                  :class="sessionChange() < -0.01 ? 'text-red-500' : 'text-gray-700'"
-                                  x-text="sessionChange() < -0.01 ? 'Falta' : 'Troco'"></span>
+                                  :class="totalEntering() === 0 ? 'text-gray-500' : (sessionChange() < -0.01 ? 'text-red-500' : 'text-green-600')"
+                                  x-text="totalEntering() === 0 ? 'A pagar' : (sessionChange() < -0.01 ? 'Falta' : 'Troco')"></span>
                             <span class="font-bold"
-                                  :class="sessionChange() < -0.01 ? 'text-red-500' : 'text-gray-800'"
-                                  x-text="fmt(Math.abs(sessionChange()))"></span>
+                                  :class="totalEntering() === 0 ? 'text-gray-700' : (sessionChange() < -0.01 ? 'text-red-500' : 'text-green-700')"
+                                  x-text="totalEntering() === 0 ? fmt(sessionTotal() - totalPaid()) : fmt(Math.abs(sessionChange()))"></span>
                         </div>
                     </div>
 
