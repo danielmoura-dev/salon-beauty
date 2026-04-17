@@ -156,6 +156,32 @@
 
     {{-- Lista de comandas --}}
     <div x-show="!showVendas" class="space-y-3">
+
+        {{-- Comandas criadas na sessão (sem reload) --}}
+        <template x-for="o in newOrders" :key="o.id">
+            <div @click="$dispatch('open-order-modal', { orderId: o.id })"
+                 x-show="activeTab === 'all' || activeTab === 'open'"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 shadow-sm
+                        px-4 py-3.5 hover:border-primary-200 transition-colors cursor-pointer">
+                <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-500 font-bold shrink-0"
+                     x-text="o.client?.name?.charAt(0)?.toUpperCase()"></div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-gray-900" x-text="o.client?.name"></p>
+                    <p class="text-sm text-gray-400" x-text="(o.items?.length ?? 0) + ' itens · agora'"></p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="font-bold text-gray-900">R$ 0,00</p>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Aberta</span>
+                </div>
+                <svg class="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+                </svg>
+            </div>
+        </template>
+
         @forelse ($orders as $order)
             <div x-data="{
                     cardStatus: '{{ $order->status }}',
@@ -341,6 +367,7 @@ function ordersPage() {
         showNew:          false,
         creatingOrder:    false,
         newOrderNotes:    '',
+        newOrders:        [],
         showVendas:       false,
         vendasTab:        'item',
         activeTab:        'open',
@@ -449,6 +476,7 @@ function ordersPage() {
                     const order = await res.json();
                     this.closeNew();
                     this.openCount++;
+                    this.newOrders.unshift(order);
                     window.dispatchEvent(new CustomEvent('open-order-modal', { detail: { orderId: order.id } }));
                 }
             } finally {
