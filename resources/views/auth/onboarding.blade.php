@@ -10,18 +10,28 @@
 <form method="POST" action="{{ route('onboarding.complete') }}" enctype="multipart/form-data" class="space-y-5">
     @csrf
 
-    {{-- Foto de perfil --}}
-    <div class="flex flex-col items-center gap-3">
+    {{-- Foto de perfil com recorte circular --}}
+    <div x-data="imageCropper('avatar-input', 'avatar-preview')"
+         class="flex flex-col items-center gap-3">
+
+        {{-- Preview circular --}}
         <div id="avatar-preview"
-            class="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center text-primary-400 text-3xl overflow-hidden">
-            <svg class="h-10 w-10 text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+             class="h-24 w-24 rounded-full bg-primary-50 border-2 border-dashed border-primary-300
+                    flex items-center justify-center overflow-hidden cursor-pointer transition-colors hover:border-primary-500"
+             @click="document.getElementById('avatar-input').click()">
+            <svg class="h-10 w-10 text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
         </div>
+
         <label class="cursor-pointer text-sm text-primary-600 font-medium hover:underline">
             Adicionar foto de perfil
-            <input type="file" name="avatar" accept="image/*" class="hidden"
-                onchange="previewAvatar(this)">
+            <input id="avatar-input" type="file" name="avatar" accept="image/*" class="hidden">
         </label>
+
         @error('avatar')<p class="text-xs text-red-500">{{ $message }}</p>@enderror
+
+        @include('components.image-cropper')
     </div>
 
     {{-- WhatsApp --}}
@@ -44,17 +54,4 @@
         </button>
     </form>
 </form>
-
-<script>
-function previewAvatar(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            const preview = document.getElementById('avatar-preview');
-            preview.innerHTML = `<img src="${e.target.result}" class="h-full w-full object-cover">`;
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-</script>
 @endsection

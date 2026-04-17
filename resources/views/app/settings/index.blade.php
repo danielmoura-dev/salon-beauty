@@ -15,13 +15,31 @@
               enctype="multipart/form-data" class="p-5 space-y-4">
             @csrf
 
-            @if ($tenant->logo)
-                <div class="flex items-center gap-4">
-                    <img src="{{ Storage::url($tenant->logo) }}"
-                         class="h-16 w-16 rounded-2xl object-cover" alt="Logo">
-                    <span class="text-sm text-gray-400">Logo atual</span>
+            {{-- Logo com recorte circular --}}
+            <div x-data="imageCropper('logo-input', 'logo-preview')"
+                 class="flex flex-col items-center gap-2">
+
+                <div id="logo-preview"
+                     class="h-24 w-24 rounded-full border-2 border-dashed border-gray-300
+                            flex items-center justify-center overflow-hidden cursor-pointer
+                            hover:border-primary-400 transition-colors bg-gray-50"
+                     @click="document.getElementById('logo-input').click()">
+                    @if ($tenant->logo)
+                        <img src="{{ Storage::url($tenant->logo) }}" class="h-full w-full object-cover" alt="Logo">
+                    @else
+                        <svg class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+                        </svg>
+                    @endif
                 </div>
-            @endif
+
+                <label class="cursor-pointer text-xs text-primary-600 font-medium hover:underline">
+                    {{ $tenant->logo ? 'Trocar logo' : 'Adicionar logo' }}
+                    <input id="logo-input" type="file" name="logo" accept="image/*" class="hidden">
+                </label>
+
+                @include('components.image-cropper')
+            </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nome do estabelecimento</label>
@@ -37,12 +55,6 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
                 <input type="tel" name="phone" value="{{ $tenant->phone }}"
                     class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Logo (opcional)</label>
-                <input type="file" name="logo" accept="image/*"
-                    class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0
-                           file:bg-primary-50 file:px-3 file:py-1.5 file:text-primary-600 hover:file:bg-primary-100">
             </div>
             <button type="submit"
                 class="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
