@@ -802,7 +802,12 @@ function orderModal() {
             this.loading = false;
         },
 
-        close() { this.show = false; this.order = null; this.showCancelConfirm = false; },
+        close() {
+            if (this.order) {
+                window.dispatchEvent(new CustomEvent('order-updated', { detail: { order: this.order } }));
+            }
+            this.show = false; this.order = null; this.showCancelConfirm = false;
+        },
 
         async loadOrder(id) {
             const res  = await fetch(`/orders/${id}/data`, { headers: { Accept: 'application/json' } });

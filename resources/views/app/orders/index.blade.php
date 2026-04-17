@@ -157,8 +157,22 @@
     {{-- Lista de comandas --}}
     <div x-show="!showVendas" class="space-y-3">
         @forelse ($orders as $order)
-            <div @click="$dispatch('open-order-modal', { orderId: '{{ $order->id }}' })"
-               x-show="!deletedIds.has('{{ $order->id }}') && '{{ $order->status }}' !== 'cancelled' && (activeTab === 'all' || activeTab === '{{ $order->status }}')"
+            <div x-data="{
+                    cardStatus: '{{ $order->status }}',
+                    cardTotal: {{ $order->total }},
+                    cardItems: {{ $order->items->count() }},
+                    init() {
+                        window.addEventListener('order-updated', e => {
+                            if (e.detail.order?.id === '{{ $order->id }}') {
+                                this.cardStatus = e.detail.order.status ?? this.cardStatus;
+                                this.cardTotal  = e.detail.order.total  ?? this.cardTotal;
+                                this.cardItems  = e.detail.order.items?.length ?? this.cardItems;
+                            }
+                        });
+                    }
+                 }"
+               @click="$dispatch('open-order-modal', { orderId: '{{ $order->id }}' })"
+               x-show="!deletedIds.has('{{ $order->id }}') && cardStatus !== 'cancelled' && (activeTab === 'all' || activeTab === cardStatus)"
                x-transition:leave="transition ease-in duration-150"
                x-transition:leave-start="opacity-100 scale-100"
                x-transition:leave-end="opacity-0 scale-95"
@@ -173,21 +187,17 @@
                 <div class="flex-1 min-w-0">
                     <p class="font-semibold text-gray-900">{{ $order->client->name }}</p>
                     <p class="text-sm text-gray-400">
-                        {{ $order->items->count() }} {{ Str::plural('item', $order->items->count()) }}
+                        <span x-text="cardItems + (cardItems === 1 ? ' item' : ' itens')"></span>
                         · {{ $order->created_at->format('H:i') }}
                     </p>
                 </div>
 
                 <div class="text-right shrink-0">
-                    <p class="font-bold text-gray-900">
-                        R$ {{ number_format($order->total, 2, ',', '.') }}
-                    </p>
-                    <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                                 {{ $order->status === 'open'
-                                     ? 'bg-amber-100 text-amber-700'
-                                     : 'bg-green-100 text-green-700' }}">
-                        {{ $order->status === 'open' ? 'Aberta' : 'Fechada' }}
-                    </span>
+                    <p class="font-bold text-gray-900"
+                       x-text="'R$ ' + cardTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></p>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full"
+                          :class="cardStatus === 'open' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
+                          x-text="cardStatus === 'open' ? 'Aberta' : 'Fechada'"></span>
                 </div>
 
                 <svg class="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24"
