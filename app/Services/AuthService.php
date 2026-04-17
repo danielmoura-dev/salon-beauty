@@ -59,6 +59,16 @@ class AuthService
         foreach ($productCategories as $name) {
             Category::create(['tenant_id' => $tenantId, 'type' => 'product', 'name' => $name]);
         }
+
+        $expenseCategories = [
+            'Compras de produtos',
+            'Contabilidade / Impostos',
+            'Manutenção / Limpeza',
+        ];
+
+        foreach ($expenseCategories as $name) {
+            Category::create(['tenant_id' => $tenantId, 'type' => 'expense', 'name' => $name]);
+        }
     }
 
     public function findOrCreateFromGoogle(SocialiteUser $socialUser): User
