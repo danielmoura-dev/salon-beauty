@@ -10,6 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy built assets to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: public/build
+          target: /var/www/salon-beauty
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -18,16 +42,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           timeout: 60s
-          command_timeout: 20m
+          command_timeout: 10m
           script: |
             git config --global --add safe.directory /var/www/salon-beauty
             cd /var/www/salon-beauty
             git pull origin main
             COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader
-            npm install
-            npm run build
             php artisan migrate --force
             php artisan optimize:clear
             php artisan optimize
-            chown -R www-data:www-data /var/www/salon-beauty/storage /var/www/salon-beauty/bootstrap/cache
+            chown -R www-data:www-data /var/www/salon-beauty/storage /var/www/salon-beauty/bootstrap/cache /var/www/salon-beauty/public/build
             systemctl restart php8.3-fpm
