@@ -158,7 +158,7 @@
     <div x-show="!showVendas" class="space-y-3">
         @forelse ($orders as $order)
             <div @click="$dispatch('open-order-modal', { orderId: '{{ $order->id }}' })"
-               x-show="!deletedIds.has('{{ $order->id }}') && (activeTab === 'all' || activeTab === '{{ $order->status }}')"
+               x-show="!deletedIds.has('{{ $order->id }}') && '{{ $order->status }}' !== 'cancelled' && (activeTab === 'all' || activeTab === '{{ $order->status }}')"
                x-transition:leave="transition ease-in duration-150"
                x-transition:leave-start="opacity-100 scale-100"
                x-transition:leave-end="opacity-0 scale-95"
