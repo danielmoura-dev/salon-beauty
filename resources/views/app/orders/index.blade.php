@@ -158,24 +158,20 @@
     <div x-show="!showVendas" class="space-y-3">
         @forelse ($orders as $order)
             <div @click="$dispatch('open-order-modal', { orderId: '{{ $order->id }}' })"
-               x-show="!deletedIds.has('{{ $order->id }}') && (activeTab === 'all' || '{{ $order->status }}' === 'cancelled' || activeTab === '{{ $order->status }}')"
+               x-show="!deletedIds.has('{{ $order->id }}') && (activeTab === 'all' || activeTab === '{{ $order->status }}')"
                x-transition:leave="transition ease-in duration-150"
                x-transition:leave-start="opacity-100 scale-100"
                x-transition:leave-end="opacity-0 scale-95"
-               class="flex items-center gap-4 rounded-2xl border shadow-sm px-4 py-3.5 transition-colors cursor-pointer
-                      {{ $order->status === 'cancelled'
-                          ? 'bg-red-50 border-red-200 hover:border-red-300'
-                          : 'bg-white border-gray-100 hover:border-primary-200' }}">
+               class="flex items-center gap-4 rounded-2xl bg-white border border-gray-100 shadow-sm
+                      px-4 py-3.5 hover:border-primary-200 transition-colors cursor-pointer">
 
-                <div class="h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0
-                            {{ $order->status === 'cancelled' ? 'bg-red-100 text-red-400' : 'bg-primary-100 text-primary-500' }}">
+                <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center
+                            text-primary-500 font-bold shrink-0">
                     {{ strtoupper(substr($order->client->name, 0, 1)) }}
                 </div>
 
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold {{ $order->status === 'cancelled' ? 'text-red-700 line-through' : 'text-gray-900' }}">
-                        {{ $order->client->name }}
-                    </p>
+                    <p class="font-semibold text-gray-900">{{ $order->client->name }}</p>
                     <p class="text-sm text-gray-400">
                         {{ $order->items->count() }} {{ Str::plural('item', $order->items->count()) }}
                         · {{ $order->created_at->format('H:i') }}
@@ -183,16 +179,14 @@
                 </div>
 
                 <div class="text-right shrink-0">
-                    <p class="font-bold {{ $order->status === 'cancelled' ? 'text-red-400' : 'text-gray-900' }}">
+                    <p class="font-bold text-gray-900">
                         R$ {{ number_format($order->total, 2, ',', '.') }}
                     </p>
                     <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                                 @if($order->status === 'cancelled') bg-red-100 text-red-600
-                                 @elseif($order->status === 'open') bg-amber-100 text-amber-700
-                                 @else bg-green-100 text-green-700 @endif">
-                        @if($order->status === 'cancelled') Cancelada
-                        @elseif($order->status === 'open') Aberta
-                        @else Fechada @endif
+                                 {{ $order->status === 'open'
+                                     ? 'bg-amber-100 text-amber-700'
+                                     : 'bg-green-100 text-green-700' }}">
+                        {{ $order->status === 'open' ? 'Aberta' : 'Fechada' }}
                     </span>
                 </div>
 
