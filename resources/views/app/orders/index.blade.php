@@ -160,7 +160,7 @@
         {{-- Comandas criadas na sessão (sem reload) --}}
         <template x-for="o in newOrders" :key="o.id">
             <div @click="$dispatch('open-order-modal', { orderId: o.id })"
-                 x-show="activeTab === 'all' || activeTab === 'open'"
+                 x-show="!deletedIds.has(o.id) && o.status !== 'cancelled' && (activeTab === 'all' || activeTab === o.status)"
                  x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
@@ -378,10 +378,15 @@ function ordersPage() {
         init() {
             window.addEventListener('order-deleted', (e) => {
                 this.deletedIds = new Set([...this.deletedIds, e.detail.orderId]);
-                // Atualiza contagens ao deletar
                 const status = e.detail.orderStatus;
                 if (status === 'open')   this.openCount   = Math.max(0, this.openCount - 1);
                 if (status === 'closed') this.closedCount = Math.max(0, this.closedCount - 1);
+            });
+            window.addEventListener('order-updated', (e) => {
+                const updated = e.detail.order;
+                if (!updated) return;
+                const idx = this.newOrders.findIndex(o => o.id === updated.id);
+                if (idx !== -1) this.newOrders[idx] = { ...this.newOrders[idx], ...updated };
             });
         },
 
