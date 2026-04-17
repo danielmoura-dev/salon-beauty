@@ -61,9 +61,11 @@ class AuthService
         }
 
         $expenseCategories = [
+            'Aluguel / Contas fixas',
             'Compras de produtos',
             'Contabilidade / Impostos',
             'Manutenção / Limpeza',
+            'Salários / Funcionários',
         ];
 
         foreach ($expenseCategories as $name) {

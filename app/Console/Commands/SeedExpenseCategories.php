@@ -14,9 +14,11 @@ class SeedExpenseCategories extends Command
     public function handle(): void
     {
         $names = [
+            'Aluguel / Contas fixas',
             'Compras de produtos',
             'Contabilidade / Impostos',
             'Manutenção / Limpeza',
+            'Salários / Funcionários',
         ];
 
         $tenants = Tenant::all();
