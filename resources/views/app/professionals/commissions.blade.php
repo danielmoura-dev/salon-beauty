@@ -96,11 +96,17 @@
                     <p class="text-xs text-gray-400">{{ $payment->created_at->format('d/m/Y') }}</p>
                 </div>
                 <form method="POST"
-                      action="{{ route('professionals.commissions.cancel', $payment) }}"
-                      onsubmit="return confirm('Cancelar este pagamento? Os valores voltarão para pendente.')">
+                      id="form-cancel-commission-{{ $payment->id }}"
+                      action="{{ route('professionals.commissions.cancel', $payment) }}">
                     @csrf
                     @method('DELETE')
-                    <button type="submit"
+                    <button type="button"
+                        @click="$dispatch('open-confirm', {
+                            formId:  'form-cancel-commission-{{ $payment->id }}',
+                            title:   'Cancelar pagamento',
+                            message: 'Os valores voltarão para pendente.',
+                            label:   'Cancelar pagamento'
+                        })"
                         class="shrink-0 text-red-400 hover:text-red-600 transition-colors p-1"
                         title="Cancelar pagamento">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

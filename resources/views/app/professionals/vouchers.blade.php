@@ -59,10 +59,16 @@
                                 <span class="text-xs bg-gray-100 text-gray-500 rounded-full px-2.5 py-0.5 shrink-0">Descontado</span>
                             @else
                                 <span class="text-xs bg-amber-50 text-amber-600 rounded-full px-2.5 py-0.5 shrink-0">Pendente</span>
-                                <form method="POST" action="{{ route('professionals.vouchers.destroy', $voucher) }}">
+                                <form method="POST" action="{{ route('professionals.vouchers.destroy', $voucher) }}"
+                                      id="form-del-voucher-{{ $voucher->id }}">
                                     @csrf @method('DELETE')
-                                    <button type="submit"
-                                        onclick="return confirm('Remover este vale?')"
+                                    <button type="button"
+                                        @click="$dispatch('open-confirm', {
+                                            formId:  'form-del-voucher-{{ $voucher->id }}',
+                                            title:   'Remover vale',
+                                            message: 'Remover este vale do profissional?',
+                                            label:   'Remover'
+                                        })"
                                         class="text-gray-300 hover:text-red-500 transition-colors">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
