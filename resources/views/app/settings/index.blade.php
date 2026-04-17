@@ -12,11 +12,11 @@
             <h2 class="font-semibold text-gray-900">Dados do estabelecimento</h2>
         </div>
         <form method="POST" action="{{ route('settings.profile') }}"
-              enctype="multipart/form-data" class="p-5 space-y-4">
+              enctype="multipart/form-data" class="p-5 space-y-4" id="form-profile">
             @csrf
 
             {{-- Logo com recorte circular --}}
-            <div x-data="imageCropper('logo-input', 'logo-preview')"
+            <div x-data="imageCropper('logo-input', 'logo-preview', 'form-profile')"
                  class="flex flex-col items-center gap-2">
 
                 <div id="logo-preview"
