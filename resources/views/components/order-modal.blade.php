@@ -77,13 +77,22 @@
                                 </div>
                                 <p class="font-semibold text-gray-900 text-sm shrink-0"
                                    x-text="fmt(item.qty * item.unit_price)"></p>
-                                <button x-show="order?.status === 'open'"
-                                        @click="removeItem(item.id)"
-                                        class="rounded-lg p-1.5 bg-red-50 text-red-500 hover:bg-red-100 shrink-0">
-                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
+                                <template x-if="order?.status === 'open'">
+                                    <div class="flex gap-1 shrink-0">
+                                        <button @click="openEditItem(item)"
+                                                class="rounded-lg p-1.5 bg-gray-100 text-gray-500 hover:bg-gray-200">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/>
+                                            </svg>
+                                        </button>
+                                        <button @click="removeItem(item.id)"
+                                                class="rounded-lg p-1.5 bg-red-50 text-red-500 hover:bg-red-100">
+                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </template>
                             </div>
                         </template>
 
@@ -185,7 +194,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
                         </svg>
                     </button>
-                    <h2 class="font-semibold text-gray-900">Adicionar Item</h2>
+                    <h2 class="font-semibold text-gray-900" x-text="editingItemId ? 'Editar Item' : 'Adicionar Item'"></h2>
                 </div>
 
                 <div class="overflow-y-auto flex-1 px-5 py-4 space-y-4">
@@ -294,9 +303,9 @@
                         class="flex-1 rounded-xl border border-gray-300 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                         Cancelar
                     </button>
-                    <button type="button" @click="addItem()" :disabled="saving"
+                    <button type="button" @click="saveItem()" :disabled="saving"
                         class="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60">
-                        <span x-show="!saving">Adicionar</span>
+                        <span x-show="!saving" x-text="editingItemId ? 'Salvar' : 'Adicionar'"></span>
                         <span x-show="saving">Salvando…</span>
                     </button>
                 </div>
@@ -767,6 +776,8 @@ function orderModal() {
 
         formData: { services: [], products: [], professionals: [], fees: { credit_card: 0, debit_card: 0 } },
 
+        editingItemId: null,
+
         itemForm: {
             type: 'service', description: '', qty: 1, unit_price: 0,
             product_id: null, professional_id: '', commission_pct: 0, has_commission: true,
@@ -822,11 +833,48 @@ function orderModal() {
 
         openAddItem() {
             this.itemError              = '';
+            this.editingItemId          = null;
             const defaultProfId         = this.order?.appointment?.professional_id ?? '';
             this.itemForm               = { type: 'service', description: '', qty: 1, unit_price: 0, product_id: null, professional_id: defaultProfId, commission_pct: 0, has_commission: true };
             this.pickerSelectedServices = [];
             this.pickerSelectedProducts = [];
             this.view                   = 'addItem';
+        },
+
+        openEditItem(item) {
+            this.itemError              = '';
+            this.editingItemId          = item.id;
+            this.itemForm               = {
+                type:            item.type,
+                description:     item.description,
+                qty:             item.qty,
+                unit_price:      item.unit_price,
+                product_id:      item.product_id ?? null,
+                professional_id: item.professional_id ?? '',
+                commission_pct:  item.commission_pct ?? 0,
+                has_commission:  item.has_commission ?? false,
+            };
+            this.pickerSelectedServices = [];
+            this.pickerSelectedProducts = [];
+            this.view                   = 'addItem';
+        },
+
+        async saveItem() {
+            if (!this.itemForm.description) { this.itemError = 'Informe a descrição.'; return; }
+            this.saving = true; this.itemError = '';
+            try {
+                const url    = this.editingItemId
+                    ? `/orders/${this.order.id}/items/${this.editingItemId}`
+                    : `/orders/${this.order.id}/items`;
+                const method = this.editingItemId ? 'PATCH' : 'POST';
+                const res    = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify(this.itemForm),
+                });
+                if (res.ok) { this.order = await res.json(); this.view = 'detail'; }
+                else { this.itemError = 'Erro ao salvar item.'; }
+            } finally { this.saving = false; }
         },
 
         handleCloseClick() {
@@ -932,20 +980,6 @@ function orderModal() {
 
         chargeDebtAndPay() {
             this.startPaymentForm(true, false);
-        },
-
-        async addItem() {
-            if (!this.itemForm.description) { this.itemError = 'Informe a descrição.'; return; }
-            this.saving = true; this.itemError = '';
-            try {
-                const res = await fetch(`/orders/${this.order.id}/items`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
-                    body: JSON.stringify(this.itemForm),
-                });
-                if (res.ok) { this.order = await res.json(); this.view = 'detail'; }
-                else { this.itemError = 'Erro ao adicionar item.'; }
-            } finally { this.saving = false; }
         },
 
         removeItem(itemId) {

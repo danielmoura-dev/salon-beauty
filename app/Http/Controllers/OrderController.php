@@ -160,6 +160,44 @@ class OrderController extends Controller
         return back()->with('success', 'Item adicionado!');
     }
 
+    public function updateItem(Request $request, Order $order, OrderItem $item)
+    {
+        $data = $request->validate([
+            'type'            => ['required', 'in:service,product,other'],
+            'description'     => ['required', 'string', 'max:200'],
+            'qty'             => ['required', 'integer', 'min:1'],
+            'unit_price'      => ['required', 'numeric', 'min:0'],
+            'product_id'      => ['nullable', 'uuid', 'exists:products,id'],
+            'professional_id' => ['nullable', 'uuid', 'exists:professionals,id'],
+            'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'has_commission'  => ['boolean'],
+        ]);
+
+        $data['has_commission'] = $request->boolean('has_commission', true);
+
+        // Ajusta estoque se mudou qty ou produto
+        if ($item->product_id) {
+            $product = Product::find($item->product_id);
+            if ($product && $product->track_stock && $product->stock_qty !== null) {
+                $product->increment('stock_qty', $item->qty); // devolve qty antiga
+            }
+        }
+
+        $item->update($data);
+
+        if (!empty($data['product_id'])) {
+            $product = Product::find($data['product_id']);
+            if ($product && $product->track_stock && $product->stock_qty !== null) {
+                $product->decrement('stock_qty', $data['qty']); // desconta qty nova
+            }
+        }
+
+        $order->recalcTotal();
+
+        $order->load(['client', 'items.professional', 'payments', 'appointment']);
+        return response()->json($order);
+    }
+
     public function removeItem(Request $request, Order $order, OrderItem $item)
     {
         // Restore stock if item linked to a tracked product

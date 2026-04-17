@@ -89,6 +89,7 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::get('/orders/{order}/data', [OrderController::class, 'data'])->name('orders.data');
     Route::post('/orders/{order}/items', [OrderController::class, 'addItem'])->name('orders.items.add');
+    Route::patch('/orders/{order}/items/{item}', [OrderController::class, 'updateItem'])->name('orders.items.update');
     Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'removeItem'])->name('orders.items.remove');
     Route::post('/orders/{order}/payments', [OrderController::class, 'addPayment'])->name('orders.payments.add');
     Route::post('/orders/{order}/payments/clear', [OrderController::class, 'clearPayments'])->name('orders.payments.clear');
