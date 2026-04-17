@@ -124,19 +124,28 @@ class WebhookController extends Controller
         if (! $sub) return;
 
         $status = match ($stripeSub->status) {
-            'active'             => 'active',
-            'past_due'           => 'past_due',
-            'canceled'           => 'cancelled',
-            'paused'             => 'past_due',
-            'unpaid'             => 'past_due',
-            default              => $sub->status,
+            'active'   => 'active',
+            'past_due' => 'past_due',
+            'canceled' => 'cancelled',
+            'paused'   => 'past_due',
+            'unpaid'   => 'past_due',
+            default    => $sub->status,
         };
 
-        $cancelAtPeriodEnd = (bool) ($stripeSub->cancel_at_period_end ?? false);
+        // Na API 2026-03-25 (billing_mode flexible), current_period_end
+        // ficou em items.data[0].current_period_end, não mais no root
+        $periodEnd = $stripeSub->items->data[0]->current_period_end
+            ?? $stripeSub->current_period_end
+            ?? null;
+
+        // Cancelamento agendado: novo Stripe usa cancel_at (timestamp),
+        // versões anteriores usavam cancel_at_period_end (boolean)
+        $cancelAtPeriodEnd = (! empty($stripeSub->cancel_at))
+            || (bool) ($stripeSub->cancel_at_period_end ?? false);
 
         $sub->update([
             'status'               => $status,
-            'current_period_end'   => Carbon::createFromTimestamp($stripeSub->current_period_end),
+            'current_period_end'   => $periodEnd ? Carbon::createFromTimestamp($periodEnd) : $sub->current_period_end,
             'cancel_at_period_end' => $cancelAtPeriodEnd,
         ]);
 
@@ -148,7 +157,7 @@ class WebhookController extends Controller
 
         $sub->tenant->update(['plan_status' => $tenantStatus]);
 
-        $cancelMsg = $cancelAtPeriodEnd ? ' (cancelamento agendado para fim do período)' : '';
+        $cancelMsg = $cancelAtPeriodEnd ? ' (cancelamento agendado)' : '';
         Log::info("Stripe subscription updated para tenant {$sub->tenant_id}: {$status}{$cancelMsg}");
     }
 
