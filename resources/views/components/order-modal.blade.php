@@ -417,7 +417,7 @@
                         </template>
                         <div class="flex items-center justify-between border-t border-gray-200 pt-1.5">
                             <span class="text-gray-700 font-semibold">Total</span>
-                            <span class="font-bold text-gray-900" x-text="fmt(sessionTotal())"></span>
+                            <span class="font-bold text-gray-900" x-text="fmt(sessionTotal() + totalFeeEntering())"></span>
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-gray-500">Valor inserido</span>
