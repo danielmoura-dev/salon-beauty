@@ -378,6 +378,7 @@ function ordersPage() {
         init() {
             window.addEventListener('order-deleted', (e) => {
                 this.deletedIds = new Set([...this.deletedIds, e.detail.orderId]);
+                this.newOrders  = this.newOrders.filter(o => o.id !== e.detail.orderId);
                 const status = e.detail.orderStatus;
                 if (status === 'open')   this.openCount   = Math.max(0, this.openCount - 1);
                 if (status === 'closed') this.closedCount = Math.max(0, this.closedCount - 1);
@@ -385,8 +386,12 @@ function ordersPage() {
             window.addEventListener('order-updated', (e) => {
                 const updated = e.detail.order;
                 if (!updated) return;
-                const idx = this.newOrders.findIndex(o => o.id === updated.id);
-                if (idx !== -1) this.newOrders[idx] = { ...this.newOrders[idx], ...updated };
+                if (updated.status === 'cancelled') {
+                    this.newOrders = this.newOrders.filter(o => o.id !== updated.id);
+                } else {
+                    const idx = this.newOrders.findIndex(o => o.id === updated.id);
+                    if (idx !== -1) this.newOrders.splice(idx, 1, { ...this.newOrders[idx], ...updated });
+                }
             });
         },
 
