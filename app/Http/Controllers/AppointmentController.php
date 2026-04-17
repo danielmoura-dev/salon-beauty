@@ -151,7 +151,24 @@ class AppointmentController extends Controller
             'notes'           => ['nullable', 'string', 'max:500'],
         ]);
 
+        $oldStatus = $appointment->status;
         $appointment->update($data);
+
+        // Sincroniza status da comanda ao mudar status do agendamento
+        if (isset($data['status']) && $data['status'] !== $oldStatus && $appointment->order_id) {
+            $order = $appointment->order;
+            if ($order) {
+                if ($data['status'] === 'cancelled') {
+                    // Cancela a comanda (se não estiver já fechada/paga)
+                    if ($order->status !== 'closed') {
+                        $order->update(['status' => 'cancelled']);
+                    }
+                } elseif ($order->status === 'cancelled') {
+                    // Restaura a comanda cancelada ao reativar o agendamento
+                    $order->update(['status' => 'open']);
+                }
+            }
+        }
 
         return response()->json(['success' => true]);
     }
