@@ -941,13 +941,19 @@ function orderModal() {
             } finally { this.saving = false; }
         },
 
-        async removeItem(itemId) {
-            if (!confirm('Remover este item da comanda?')) return;
-            const res = await fetch(`/orders/${this.order.id}/items/${itemId}`, {
-                method: 'DELETE',
-                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
-            });
-            if (res.ok) this.order = await res.json();
+        removeItem(itemId) {
+            window.__confirmCallback = async () => {
+                const res = await fetch(`/orders/${this.order.id}/items/${itemId}`, {
+                    method: 'DELETE',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+                });
+                if (res.ok) this.order = await res.json();
+            };
+            window.dispatchEvent(new CustomEvent('open-confirm', { detail: {
+                title:   'Remover item',
+                message: 'Remover este item da comanda?',
+                label:   'Remover',
+            }}));
         },
 
         addSecondPaymentEntry() {

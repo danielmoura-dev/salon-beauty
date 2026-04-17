@@ -117,9 +117,21 @@
     <div x-data="{
             show: false,
             message: '',
+            title: 'Confirmar',
+            label: 'Confirmar',
             formId: null,
-            open(detail) { this.message = detail.message; this.formId = detail.formId; this.show = true; },
-            confirm() { document.getElementById(this.formId)?.submit(); this.show = false; }
+            open(detail) {
+                this.message = detail.message;
+                this.title   = detail.title  ?? 'Confirmar';
+                this.label   = detail.label  ?? 'Confirmar';
+                this.formId  = detail.formId ?? null;
+                this.show    = true;
+            },
+            confirm() {
+                if (window.__confirmCallback) { window.__confirmCallback(); window.__confirmCallback = null; }
+                else if (this.formId) { document.getElementById(this.formId)?.submit(); }
+                this.show = false;
+            }
          }"
          @open-confirm.window="open($event.detail)"
          x-show="show"
@@ -148,7 +160,7 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="font-semibold text-gray-900">Confirmar exclusão</h3>
+                    <h3 class="font-semibold text-gray-900" x-text="title"></h3>
                     <p class="mt-1 text-sm text-gray-500" x-text="message"></p>
                 </div>
             </div>
@@ -158,8 +170,8 @@
                     Cancelar
                 </button>
                 <button @click="confirm()"
-                    class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
-                    Excluir
+                    class="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+                    x-text="label">
                 </button>
             </div>
         </div>

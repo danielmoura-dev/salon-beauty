@@ -147,10 +147,10 @@
 
     {{-- Botão fechar comanda --}}
     @if ($order->status === 'open')
-        <form method="POST" action="{{ route('orders.close', $order) }}">
+        <form id="form-fechar-comanda" method="POST" action="{{ route('orders.close', $order) }}">
             @csrf
-            <button type="submit"
-                onclick="return confirm('Fechar esta comanda?')"
+            <button type="button"
+                @click="$dispatch('open-confirm', { formId: 'form-fechar-comanda', title: 'Fechar comanda', message: 'Confirmar o fechamento desta comanda?', label: 'Fechar' })"
                 class="w-full rounded-2xl bg-gray-900 py-4 text-white font-bold text-base hover:bg-gray-800 transition-colors">
                 Fechar Comanda
             </button>
