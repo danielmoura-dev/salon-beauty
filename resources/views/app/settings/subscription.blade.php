@@ -80,7 +80,13 @@
     {{-- ── Sem assinatura / trial / expirada ───────────────────── --}}
     @else
         <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
-            <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
+            <span class="inline-block bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                Oferta especial de lançamento
+            </span>
+            <div class="flex items-center justify-center gap-3">
+                <p class="text-lg text-gray-400 line-through">R$ 79,90</p>
+                <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
+            </div>
             <p class="text-gray-400 text-sm mt-1">por mês</p>
 
             <ul class="mt-5 space-y-2 text-sm text-left text-gray-600">
