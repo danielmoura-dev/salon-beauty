@@ -5,18 +5,17 @@
 --}}
 
 @once
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" integrity="sha512-UtLOu9C7NuThQhuXXrGwx9Jb/z9zPQJctuAgNUBK3Z6kkSYT9wJ+2+dh4ZD5dsKDnuDEQBiHOY0yZ5TMcrcQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 @endonce
 
 {{-- ── Modal de recorte ──────────────────────────────────── --}}
 <div x-show="cropOpen"
      x-cloak
      class="fixed inset-0 z-[200] flex items-center justify-center p-4"
-     style="display:none"
-     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter="transition ease-out duration-150"
      x-transition:enter-start="opacity-0"
      x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave="transition ease-in duration-100"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0">
 
@@ -24,14 +23,7 @@
     <div class="absolute inset-0 bg-black/75" @click="cancelCrop()"></div>
 
     {{-- Card --}}
-    <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
-         @click.stop
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95">
+    <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden z-10">
 
         {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -45,8 +37,9 @@
         </div>
 
         {{-- Área de recorte --}}
-        <div class="relative bg-gray-950" style="height:320px">
-            <img id="crop-image-target" src="" alt="" class="block max-w-full">
+        <div class="bg-gray-950" style="height:300px;overflow:hidden;">
+            <img id="crop-image-target" src="" alt=""
+                 style="display:block;max-width:100%;max-height:300px;">
         </div>
 
         {{-- Preview + instruções --}}
@@ -55,7 +48,7 @@
                  class="h-14 w-14 shrink-0 rounded-full overflow-hidden border-2 border-primary-400 bg-gray-200">
             </div>
             <p class="text-xs text-gray-500 leading-relaxed">
-                Mova e use o scroll do mouse para ajustar o zoom. A área dentro do círculo será salva.
+                Mova a foto e use o scroll para ajustar o zoom.
             </p>
         </div>
 
@@ -74,7 +67,7 @@
 </div>
 
 @once
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" integrity="sha512-JyCZjCOZoyeQZSd5+YEAcFgz2fowJ1F1hyJOXgtKu4llIa0KneLcidn5bwfutiehQLCzs35HvM5Bsn4Q0v+yA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script>
 function imageCropper(fileInputId, previewId) {
     return {
@@ -84,63 +77,73 @@ function imageCropper(fileInputId, previewId) {
         init() {
             const self = this;
             const input = document.getElementById(fileInputId);
-            if (input) {
-                input.addEventListener('change', function(e) {
-                    if (e.target.files && e.target.files[0]) {
-                        self._openCrop(e.target.files[0]);
-                    }
-                });
-            }
+            if (!input) return;
+            input.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    self._openCrop(e.target.files[0]);
+                }
+            });
         },
 
         _openCrop(file) {
             const self = this;
             const reader = new FileReader();
             reader.onload = function(e) {
+                // 1. Seta a src na imagem antes de abrir o modal
+                const img = document.getElementById('crop-image-target');
+                img.src = e.target.result;
+
+                // 2. Abre o modal
                 self.cropOpen = true;
-                self.$nextTick(function() {
-                    const img = document.getElementById('crop-image-target');
-                    img.src = e.target.result;
-                    if (self._cropper) { self._cropper.destroy(); self._cropper = null; }
+
+                // 3. Aguarda o modal renderizar + animação terminar antes de iniciar o Cropper
+                setTimeout(function() {
+                    if (self._cropper) {
+                        self._cropper.destroy();
+                        self._cropper = null;
+                    }
                     self._cropper = new Cropper(img, {
-                        aspectRatio:          1,
-                        viewMode:             1,
-                        dragMode:             'move',
-                        autoCropArea:         0.9,
-                        restore:              false,
-                        guides:               false,
-                        center:               false,
-                        highlight:            false,
-                        cropBoxMovable:       false,
-                        cropBoxResizable:     false,
+                        aspectRatio:              1,
+                        viewMode:                 1,
+                        dragMode:                 'move',
+                        autoCropArea:             0.85,
+                        restore:                  false,
+                        guides:                   true,
+                        center:                   true,
+                        highlight:                false,
+                        cropBoxMovable:           false,
+                        cropBoxResizable:         false,
                         toggleDragModeOnDblclick: false,
-                        preview:              '#crop-preview-circle',
+                        preview:                  '#crop-preview-circle',
                     });
-                });
+                }, 200);
             };
             reader.readAsDataURL(file);
         },
 
         confirmCrop() {
             const self = this;
+            if (!self._cropper) return;
+
             const canvas = self._cropper.getCroppedCanvas({ width: 400, height: 400 });
+            if (!canvas) return;
 
             canvas.toBlob(function(blob) {
-                // Injeta o arquivo recortado no input original
+                // Injeta o arquivo recortado no input original via DataTransfer
                 try {
                     const file = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
                     const dt   = new DataTransfer();
                     dt.items.add(file);
                     document.getElementById(fileInputId).files = dt.files;
-                } catch(e) {
-                    // Fallback: navegadores sem suporte a DataTransfer
-                    console.warn('DataTransfer não suportado:', e);
+                } catch(err) {
+                    console.warn('DataTransfer não suportado:', err);
                 }
 
                 // Atualiza o preview na página
                 const preview = document.getElementById(previewId);
                 if (preview) {
-                    preview.innerHTML = '<img src="' + canvas.toDataURL('image/jpeg', 0.9) + '" class="h-full w-full object-cover">';
+                    const url = canvas.toDataURL('image/jpeg', 0.92);
+                    preview.innerHTML = '<img src="' + url + '" class="h-full w-full object-cover">';
                 }
 
                 self._cropper.destroy();
@@ -150,8 +153,12 @@ function imageCropper(fileInputId, previewId) {
         },
 
         cancelCrop() {
-            document.getElementById(fileInputId).value = '';
-            if (this._cropper) { this._cropper.destroy(); this._cropper = null; }
+            const input = document.getElementById(fileInputId);
+            if (input) input.value = '';
+            if (this._cropper) {
+                this._cropper.destroy();
+                this._cropper = null;
+            }
             this.cropOpen = false;
         }
     };
