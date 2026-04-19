@@ -57,4 +57,9 @@ return [
         'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
     ],
 
+    'support' => [
+        'whatsapp_number'  => env('SUPPORT_WHATSAPP_NUMBER'),
+        'whatsapp_message' => env('SUPPORT_WHATSAPP_MESSAGE', 'Olá! Preciso de ajuda com o Salon Beauty.'),
+    ],
+
 ];
