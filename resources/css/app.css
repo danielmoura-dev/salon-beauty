@@ -6,6 +6,12 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* Mobile scroll performance */
+.overflow-y-auto,
+.overflow-auto {
+    -webkit-overflow-scrolling: touch;
+}
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
