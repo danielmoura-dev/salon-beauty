@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full bg-gray-50">
+<html lang="pt-BR" class="bg-gray-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +18,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="h-full"
+<body
       x-data="{ sidebarOpen: false, isDesktop: window.innerWidth >= 1024 }"
       @resize.window="isDesktop = window.innerWidth >= 1024; if (isDesktop) sidebarOpen = false"
       @keydown.escape="sidebarOpen = false">
@@ -38,7 +38,7 @@
     ></div>
 
     {{-- ========== WRAPPER FLEX ========== --}}
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex h-dvh overflow-hidden">
 
     {{-- ========== SIDEBAR ========== --}}
     <aside
