@@ -18,7 +18,7 @@ class AuthService
             'slug'          => Str::slug($data['business_name']) . '-' . Str::random(6),
             'email'         => $data['email'],
             'plan_status'   => 'trial',
-            'trial_ends_at' => now()->addDays(14),
+            'trial_ends_at' => now()->addDays(30),
         ]);
 
         $user = User::create([
