@@ -58,7 +58,7 @@
     </aside>
 
     {{-- ========== ÁREA PRINCIPAL ========== --}}
-    <div class="flex flex-col flex-1 min-w-0 overflow-y-auto overscroll-y-contain touch-pan-y">
+    <div class="flex flex-col flex-1 min-w-0 overflow-y-auto touch-pan-y">
 
         @include('components.topbar')
 
