@@ -49,7 +49,7 @@
     <div class="sticky top-0 z-20 bg-white border-b border-gray-100 overflow-hidden" id="agenda-header">
         <div class="flex w-full" id="agenda-header-inner">
             @foreach ($professionals as $professional)
-                <div class="flex-1 min-w-[160px] max-w-[50%] h-12 border-r border-gray-100 last:border-r-0
+                <div class="flex-1 min-w-[88vw] sm:min-w-[200px] sm:max-w-[50%] h-12 border-r border-gray-100 last:border-r-0
                             flex items-center justify-center gap-2 px-2">
                     @if ($professional->photo)
                         <img src="{{ Storage::url($professional->photo) }}"
@@ -93,7 +93,7 @@
                     $botUnavailPx    = (24 - $profEnd) * 2 * 48;
                 @endphp
 
-                <div class="flex-1 min-w-[160px] max-w-[50%] border-r border-gray-300 last:border-r-0 flex">
+                <div class="flex-1 min-w-[88vw] sm:min-w-[200px] sm:max-w-[50%] border-r border-gray-300 last:border-r-0 flex">
 
                     {{-- Faixa de horas --}}
                     <div class="w-14 shrink-0 border-r border-gray-200 bg-white">
