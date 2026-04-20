@@ -1,4 +1,4 @@
-<header class="sticky top-0 z-10 flex items-center gap-4 bg-white border-b border-gray-100 px-4 py-3 lg:hidden will-change-transform">
+<header class="flex items-center gap-4 bg-white border-b border-gray-100 px-4 py-3 lg:hidden shrink-0">
 
     {{-- Botão hamburguer --}}
     <button @click="sidebarOpen = true"
