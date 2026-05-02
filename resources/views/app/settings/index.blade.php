@@ -216,10 +216,32 @@
              class="border-t border-gray-100 p-5 space-y-4">
 
             {{-- Bloco de informações do plano --}}
+            @php
+                $planPrice       = (float) config('app.plan_price', 57.90);
+                $hasDiscount     = $tenant->affiliate_id
+                                   && $tenant->affiliate?->is_active
+                                   && $tenant->affiliate_discount_months_remaining > 0;
+                $discountedPrice = $hasDiscount
+                                   ? round($planPrice * (1 - $tenant->affiliate->discount_pct / 100), 2)
+                                   : null;
+                $monthsLeft      = $tenant->affiliate_discount_months_remaining ?? 0;
+            @endphp
             <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-3">
                 <div class="flex items-center justify-between">
                     <span class="text-sm font-bold text-gray-800">Plano Full</span>
-                    <span class="text-sm font-bold text-gray-900">R$ 57,90 / mês</span>
+                    @if ($hasDiscount)
+                        <div class="text-right">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs text-gray-400 line-through">R$ {{ number_format($planPrice, 2, ',', '.') }}</span>
+                                <span class="text-sm font-bold text-gray-900">R$ {{ number_format($discountedPrice, 2, ',', '.') }} / mês</span>
+                            </div>
+                            <span class="text-xs text-violet-600 font-medium">
+                                por mais {{ $monthsLeft }} {{ $monthsLeft === 1 ? 'mês' : 'meses' }}, depois R$ {{ number_format($planPrice, 2, ',', '.') }}
+                            </span>
+                        </div>
+                    @else
+                        <span class="text-sm font-bold text-gray-900">R$ {{ number_format($planPrice, 2, ',', '.') }} / mês</span>
+                    @endif
                 </div>
 
                 <div class="space-y-1 text-xs text-gray-500">

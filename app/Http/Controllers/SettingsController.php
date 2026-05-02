@@ -11,7 +11,7 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $tenant       = auth()->user()->tenant->load('subscription');
+        $tenant       = auth()->user()->tenant->load(['subscription', 'affiliate']);
         $subscription = $tenant->subscription;
 
         return view('app.settings.index', compact('tenant', 'subscription'));
