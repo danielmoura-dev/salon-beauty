@@ -2,6 +2,16 @@
 @section('title', 'Assinatura — Salon Beauty')
 
 @section('content')
+@php
+    $planPrice       = (float) config('app.plan_price', 57.90);
+    $hasDiscount     = $tenant->affiliate_id
+                       && $tenant->affiliate?->is_active
+                       && $tenant->affiliate_discount_months_remaining > 0;
+    $discountedPrice = $hasDiscount
+                       ? round($planPrice * (1 - $tenant->affiliate->discount_pct / 100), 2)
+                       : null;
+    $monthsLeft      = $tenant->affiliate_discount_months_remaining ?? 0;
+@endphp
 <div class="max-w-lg mx-auto space-y-6">
 
     <div class="text-center">
@@ -71,6 +81,21 @@
             @endif
         </div>
 
+        {{-- Preço da próxima renovação --}}
+        @if ($hasDiscount)
+            <div class="rounded-xl bg-violet-50 border border-violet-200 px-4 py-3 text-center">
+                <span class="text-xs font-semibold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-full">Código promocional ativo</span>
+                <div class="flex items-center justify-center gap-2 mt-2">
+                    <p class="text-sm text-gray-400 line-through">R$ {{ number_format($planPrice, 2, ',', '.') }}</p>
+                    <p class="text-xl font-bold text-gray-900">R$ {{ number_format($discountedPrice, 2, ',', '.') }}</p>
+                    <p class="text-sm text-gray-500">/mês</p>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">
+                    por mais {{ $monthsLeft }} {{ $monthsLeft === 1 ? 'mês' : 'meses' }}, depois R$ {{ number_format($planPrice, 2, ',', '.') }}/mês
+                </p>
+            </div>
+        @endif
+
         {{-- Opções para renovar ou trocar --}}
         <div x-data="subscriptionPage(null)" class="space-y-3">
             <p class="text-sm font-semibold text-gray-700 text-center">Renovar ou trocar forma de pagamento</p>
@@ -79,17 +104,6 @@
 
     {{-- ── Sem assinatura / trial / expirada ───────────────────── --}}
     @else
-        @php
-            $planPrice      = (float) config('app.plan_price', 57.90);
-            $hasDiscount    = $tenant->affiliate_id
-                              && $tenant->affiliate?->is_active
-                              && $tenant->affiliate_discount_months_remaining > 0;
-            $discountedPrice = $hasDiscount
-                              ? round($planPrice * (1 - $tenant->affiliate->discount_pct / 100), 2)
-                              : null;
-            $monthsLeft      = $tenant->affiliate_discount_months_remaining ?? 0;
-        @endphp
-
         <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
 
             @if ($hasDiscount)
