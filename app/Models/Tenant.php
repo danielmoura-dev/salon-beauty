@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tenant extends Model
@@ -25,14 +26,17 @@ class Tenant extends Model
         'show_pending_orders',
         'agenda_start_hour',
         'agenda_end_hour',
+        'affiliate_id',
+        'affiliate_discount_months_remaining',
     ];
 
     protected $casts = [
-        'trial_ends_at' => 'datetime',
-        'allow_duplicate_phone' => 'boolean',
-        'show_pending_orders' => 'boolean',
-        'credit_card_fee' => 'decimal:2',
-        'debit_card_fee' => 'decimal:2',
+        'trial_ends_at'                       => 'datetime',
+        'allow_duplicate_phone'               => 'boolean',
+        'show_pending_orders'                 => 'boolean',
+        'credit_card_fee'                     => 'decimal:2',
+        'debit_card_fee'                      => 'decimal:2',
+        'affiliate_discount_months_remaining' => 'integer',
     ];
 
     public function subscription(): \Illuminate\Database\Eloquent\Relations\HasOne
@@ -43,6 +47,11 @@ class Tenant extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function affiliate(): BelongsTo
+    {
+        return $this->belongsTo(Affiliate::class);
     }
 
     public function isActive(): bool

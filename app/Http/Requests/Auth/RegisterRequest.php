@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\Affiliate;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterRequest extends FormRequest
@@ -11,10 +12,15 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'          => ['required', 'string', 'min:2', 'max:100'],
-            'business_name' => ['required', 'string', 'min:2', 'max:150'],
-            'email'         => ['required', 'email', 'unique:users,email'],
-            'password'      => ['required', 'string', 'min:8', 'confirmed'],
+            'name'             => ['required', 'string', 'min:2', 'max:100'],
+            'business_name'    => ['required', 'string', 'min:2', 'max:150'],
+            'email'            => ['required', 'email', 'unique:users,email'],
+            'password'         => ['required', 'string', 'min:8', 'confirmed'],
+            'affiliate_code'   => ['nullable', 'string', 'max:30', function ($attr, $value, $fail) {
+                if ($value && ! Affiliate::where('code', strtoupper(trim($value)))->where('is_active', true)->exists()) {
+                    $fail('Código promocional inválido ou inativo.');
+                }
+            }],
         ];
     }
 

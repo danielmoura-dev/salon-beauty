@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Affiliate;
 use App\Models\Category;
 use App\Models\Professional;
 use App\Models\Tenant;
@@ -13,12 +14,21 @@ class AuthService
 {
     public function registerWithTenant(array $data): User
     {
+        $affiliate = null;
+        if (! empty($data['affiliate_code'])) {
+            $affiliate = Affiliate::where('code', strtoupper(trim($data['affiliate_code'])))
+                ->where('is_active', true)
+                ->first();
+        }
+
         $tenant = Tenant::create([
-            'name'          => $data['business_name'],
-            'slug'          => Str::slug($data['business_name']) . '-' . Str::random(6),
-            'email'         => $data['email'],
-            'plan_status'   => 'trial',
-            'trial_ends_at' => now()->addDays(30),
+            'name'                                => $data['business_name'],
+            'slug'                                => Str::slug($data['business_name']) . '-' . Str::random(6),
+            'email'                               => $data['email'],
+            'plan_status'                         => 'trial',
+            'trial_ends_at'                       => now()->addDays(30),
+            'affiliate_id'                        => $affiliate?->id,
+            'affiliate_discount_months_remaining' => $affiliate ? 3 : 0,
         ]);
 
         $user = User::create([

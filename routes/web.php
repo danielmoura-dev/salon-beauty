@@ -29,6 +29,19 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\WebhookController;
 
 
+// Verifica código de afiliado (público, sem auth)
+Route::get('/affiliate-code/check', function (\Illuminate\Http\Request $request) {
+    $code = strtoupper(trim($request->query('code', '')));
+    if (! $code) {
+        return response()->json(['valid' => null]);
+    }
+    $affiliate = \App\Models\Affiliate::where('code', $code)->where('is_active', true)->first();
+    if ($affiliate) {
+        return response()->json(['valid' => true, 'discount_pct' => (float) $affiliate->discount_pct]);
+    }
+    return response()->json(['valid' => false]);
+})->name('affiliate.check');
+
 // --- Rotas públicas ---
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'showForm'])->name('register');
@@ -169,8 +182,17 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->midd
 Route::get('/subscription/expired', fn() => view('subscription.expired'))->name('subscription.expired');
 // --- Admin panel (software owner only) ---
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\AffiliateController;
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/',                         [AdminController::class, 'dashboard'])->name('dashboard');
     Route::patch('/tenants/{tenant}/trial', [AdminController::class, 'extendTrial'])->name('tenants.trial');
+
+    // Afiliados
+    Route::get('/affiliates',                         [AffiliateController::class, 'index'])->name('affiliates.index');
+    Route::post('/affiliates',                        [AffiliateController::class, 'store'])->name('affiliates.store');
+    Route::get('/affiliates/{affiliate}',             [AffiliateController::class, 'show'])->name('affiliates.show');
+    Route::patch('/affiliates/{affiliate}',           [AffiliateController::class, 'update'])->name('affiliates.update');
+    Route::post('/affiliates/{affiliate}/toggle',     [AffiliateController::class, 'toggleActive'])->name('affiliates.toggle');
+    Route::post('/affiliates/{affiliate}/pay',        [AffiliateController::class, 'markPaid'])->name('affiliates.pay');
 });

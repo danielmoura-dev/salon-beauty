@@ -3,7 +3,9 @@
 @section('heading', 'Crie sua conta grátis')
 
 @section('content')
-<form method="POST" action="{{ route('register') }}" class="space-y-4" x-data="{ loading: false }" @submit="loading = true">
+<form method="POST" action="{{ route('register') }}" class="space-y-4"
+    x-data="registerForm()"
+    @submit.prevent="handleSubmit($event)">
     @csrf
 
     {{-- Nome do proprietário --}}
@@ -63,7 +65,59 @@
         </div>
     </div>
 
-    <button type="submit" :disabled="loading"
+    {{-- Código promocional (opcional) --}}
+    <div>
+        <button type="button" @click="codeOpen = !codeOpen"
+            class="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 transition-colors">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+            <span x-text="codeOpen ? 'Remover código promocional' : 'Tenho um código promocional'"></span>
+        </button>
+        <div x-show="codeOpen" x-transition class="mt-2 space-y-1">
+            <div class="relative">
+                <input type="text" name="affiliate_code" x-model="code"
+                    @input="onCodeInput()"
+                    placeholder="Ex: PARCEIRO2024"
+                    :class="{
+                        'border-red-400 focus:ring-red-400 focus:border-red-400': codeStatus === 'invalid',
+                        'border-green-400 focus:ring-green-400 focus:border-green-400': codeStatus === 'valid',
+                        'border-gray-300 focus:ring-primary-500 focus:border-primary-500': codeStatus === null || codeStatus === 'checking'
+                    }"
+                    class="w-full rounded-xl shadow-sm font-mono uppercase placeholder:normal-case placeholder:font-sans pr-9">
+
+                {{-- Ícone de status --}}
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg x-show="codeStatus === 'checking'" class="h-4 w-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    <svg x-show="codeStatus === 'valid'" class="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <svg x-show="codeStatus === 'invalid'" class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </div>
+            </div>
+
+            <p x-show="codeStatus === null || codeStatus === 'checking'" class="text-xs text-gray-400">
+                Se válido, você ganha desconto nos 3 primeiros meses.
+            </p>
+            <p x-show="codeStatus === 'valid'" class="text-xs text-green-600 font-medium">
+                Código válido! Você ganha <span x-text="codeDiscount + '%'"></span> de desconto nos 3 primeiros meses.
+            </p>
+            <p x-show="codeStatus === 'invalid'" class="text-xs text-red-500 font-medium">
+                Código inválido. Verifique o código ou deixe o campo em branco.
+            </p>
+
+            @error('affiliate_code')
+            <p class="text-xs text-red-500">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
+    <button type="submit" :disabled="loading || codeStatus === 'invalid' || codeStatus === 'checking'"
         class="w-full rounded-xl bg-primary-600 py-3 text-white font-semibold hover:bg-primary-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
         <svg x-show="loading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -95,4 +149,46 @@
         Já tem conta? <a href="{{ route('login') }}" class="text-primary-600 font-medium hover:underline">Entrar</a>
     </p>
 </form>
+
+<script>
+function registerForm() {
+    return {
+        loading: false,
+        codeOpen: {{ old('affiliate_code') ? 'true' : 'false' }},
+        code: '{{ old('affiliate_code', '') }}',
+        codeStatus: @json(old('affiliate_code') ? (
+            \App\Models\Affiliate::where('code', strtoupper(old('affiliate_code')))->where('is_active', true)->exists() ? 'valid' : 'invalid'
+        ) : null),
+        codeDiscount: null,
+        _timer: null,
+
+        onCodeInput() {
+            this.code = this.code.toUpperCase();
+            this.codeStatus = null;
+            clearTimeout(this._timer);
+            if (!this.code.trim()) return;
+            this.codeStatus = 'checking';
+            this._timer = setTimeout(() => this.checkCode(), 600);
+        },
+
+        async checkCode() {
+            if (!this.code.trim()) { this.codeStatus = null; return; }
+            try {
+                const res  = await fetch('/affiliate-code/check?code=' + encodeURIComponent(this.code));
+                const json = await res.json();
+                this.codeStatus  = json.valid ? 'valid' : 'invalid';
+                this.codeDiscount = json.discount_pct ?? null;
+            } catch {
+                this.codeStatus = null;
+            }
+        },
+
+        handleSubmit(e) {
+            if (this.codeStatus === 'invalid' || this.codeStatus === 'checking') return;
+            this.loading = true;
+            e.target.submit();
+        },
+    };
+}
+</script>
 @endsection

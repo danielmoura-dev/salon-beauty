@@ -72,6 +72,23 @@ class SubscriptionController extends Controller
             'allow_promotion_codes' => true,
         ];
 
+        // Aplica cupom de desconto de afiliado se houver meses restantes
+        $tenant->loadMissing('affiliate');
+        if ($tenant->affiliate_id
+            && $tenant->affiliate
+            && $tenant->affiliate->is_active
+            && $tenant->affiliate_discount_months_remaining > 0
+        ) {
+            $coupon = \Stripe\Coupon::create([
+                'percent_off'        => (float) $tenant->affiliate->discount_pct,
+                'duration'           => 'repeating',
+                'duration_in_months' => $tenant->affiliate_discount_months_remaining,
+                'name'               => 'Desconto Afiliado ' . $tenant->affiliate->code,
+            ]);
+            $params['discounts']            = [['coupon' => $coupon->id]];
+            unset($params['allow_promotion_codes']);
+        }
+
         // Reutiliza customer Stripe existente para evitar duplicatas
         if ($tenant->stripe_customer_id) {
             $params['customer'] = $tenant->stripe_customer_id;
@@ -168,8 +185,20 @@ class SubscriptionController extends Controller
 
         MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
 
+        $planPrice = (float) config('app.plan_price', 57.90);
+
+        $tenant->loadMissing('affiliate');
+        $pixAmount = $planPrice;
+        if ($tenant->affiliate_id
+            && $tenant->affiliate
+            && $tenant->affiliate->is_active
+            && $tenant->affiliate_discount_months_remaining > 0
+        ) {
+            $pixAmount = round($planPrice * (1 - $tenant->affiliate->discount_pct / 100), 2);
+        }
+
         $payment = (new PaymentClient())->create([
-            'transaction_amount' => (float) config('app.plan_price', 57.90),
+            'transaction_amount' => $pixAmount,
             'description'        => 'Salon Beauty — Plano Mensal',
             'payment_method_id'  => 'pix',
             'payer'              => [

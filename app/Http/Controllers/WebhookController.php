@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AffiliateCommission;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use Carbon\Carbon;
@@ -100,7 +101,16 @@ class WebhookController extends Controller
             'current_period_end' => $periodEnd,
         ]);
 
-        $sub->tenant->update(['plan_status' => 'active']);
+        $tenant = $sub->tenant;
+        $tenant->update(['plan_status' => 'active']);
+
+        $this->recordAffiliateCommission(
+            tenant: $tenant,
+            paidAmount: $invoice->amount_paid / 100,
+            gateway: 'stripe',
+            gatewayPaymentId: $invoice->payment_intent ?? $invoice->id,
+            period: $periodEnd->format('Y-m'),
+        );
 
         Log::info("Renovação Stripe confirmada para tenant {$sub->tenant_id}. Período até: {$periodEnd->toDateString()}");
     }
@@ -266,11 +276,56 @@ class WebhookController extends Controller
 
             $tenant->update(['plan_status' => 'active']);
 
+            $this->recordAffiliateCommission(
+                tenant: $tenant,
+                paidAmount: (float) $payment->transaction_amount,
+                gateway: 'mercadopago',
+                gatewayPaymentId: $paymentId,
+                period: now()->format('Y-m'),
+            );
+
             Log::info("PIX aprovado — tenant {$tenantId} ativo até " . now()->addMonth()->toDateString());
 
         } catch (\Exception $e) {
             Log::error('MP payment webhook error: ' . $e->getMessage());
         }
+    }
+
+    private function recordAffiliateCommission(
+        Tenant $tenant,
+        float $paidAmount,
+        string $gateway,
+        string $gatewayPaymentId,
+        string $period,
+    ): void {
+        $tenant->loadMissing('affiliate');
+
+        if (! $tenant->affiliate_id || ! $tenant->affiliate) return;
+
+        $affiliate  = $tenant->affiliate;
+        $planPrice  = (float) config('app.plan_price', 57.90);
+        $discountApplied = $paidAmount < ($planPrice * 0.99);
+        $discountAmount  = $discountApplied ? round($planPrice - $paidAmount, 2) : 0.00;
+        $commissionAmount = round($paidAmount * ($affiliate->commission_pct / 100), 2);
+
+        AffiliateCommission::create([
+            'affiliate_id'        => $affiliate->id,
+            'tenant_id'           => $tenant->id,
+            'subscription_amount' => $planPrice,
+            'discount_amount'     => $discountAmount,
+            'charged_amount'      => $paidAmount,
+            'commission_amount'   => $commissionAmount,
+            'gateway'             => $gateway,
+            'gateway_payment_id'  => $gatewayPaymentId,
+            'period'              => $period,
+            'status'              => 'pending',
+        ]);
+
+        if ($discountApplied && $tenant->affiliate_discount_months_remaining > 0) {
+            $tenant->decrement('affiliate_discount_months_remaining');
+        }
+
+        Log::info("Comissão R$ {$commissionAmount} registrada para afiliado {$affiliate->code} (tenant {$tenant->id}).");
     }
 
     private function handleMpSubscription(string $preApprovalId): void
