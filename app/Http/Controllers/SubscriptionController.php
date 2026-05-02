@@ -15,7 +15,7 @@ class SubscriptionController extends Controller
     // ── Página principal de assinatura ─────────────────────────────
     public function index()
     {
-        $tenant       = auth()->user()->tenant->load('subscription');
+        $tenant       = auth()->user()->tenant->load(['subscription', 'affiliate']);
         $subscription = $tenant->subscription;
         $pixData      = null;
 

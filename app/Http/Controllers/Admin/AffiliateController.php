@@ -66,6 +66,7 @@ class AffiliateController extends Controller
         $data = $request->validate([
             'name'           => ['required', 'string', 'max:150'],
             'email'          => ['required', 'email'],
+            'whatsapp'       => ['nullable', 'string', 'max:20'],
             'code'           => ['required', 'string', 'max:30', 'unique:affiliates,code', 'regex:/^[A-Z0-9_-]+$/'],
             'commission_pct' => ['required', 'numeric', 'min:0.01', 'max:100'],
             'discount_pct'   => ['required', 'numeric', 'min:0.01', 'max:100'],
@@ -84,6 +85,7 @@ class AffiliateController extends Controller
         $data = $request->validate([
             'name'           => ['required', 'string', 'max:150'],
             'email'          => ['required', 'email'],
+            'whatsapp'       => ['nullable', 'string', 'max:20'],
             'commission_pct' => ['required', 'numeric', 'min:0.01', 'max:100'],
             'discount_pct'   => ['required', 'numeric', 'min:0.01', 'max:100'],
             'is_active'      => ['boolean'],

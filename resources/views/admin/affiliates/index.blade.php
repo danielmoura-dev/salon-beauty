@@ -120,6 +120,9 @@
                                 <td class="px-4 py-3.5">
                                     <p class="font-medium text-white text-sm">{{ $affiliate->name }}</p>
                                     <p class="text-gray-500 text-xs">{{ $affiliate->email }}</p>
+                                    @if ($affiliate->whatsapp)
+                                        <p class="text-gray-600 text-xs">{{ $affiliate->whatsapp }}</p>
+                                    @endif
                                 </td>
 
                                 {{-- Código --}}
@@ -204,6 +207,11 @@
             <div>
                 <label class="block text-xs font-medium text-gray-400 mb-1.5">E-mail</label>
                 <input type="email" name="email" required value="{{ old('email') }}"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">WhatsApp <span class="text-gray-600">(opcional)</span></label>
+                <input type="text" name="whatsapp" value="{{ old('whatsapp') }}" placeholder="(11) 99999-9999"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500">
             </div>
             <div>

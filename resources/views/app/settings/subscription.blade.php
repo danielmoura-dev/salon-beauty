@@ -79,15 +79,45 @@
 
     {{-- ── Sem assinatura / trial / expirada ───────────────────── --}}
     @else
+        @php
+            $planPrice      = (float) config('app.plan_price', 57.90);
+            $hasDiscount    = $tenant->affiliate_id
+                              && $tenant->affiliate?->is_active
+                              && $tenant->affiliate_discount_months_remaining > 0;
+            $discountedPrice = $hasDiscount
+                              ? round($planPrice * (1 - $tenant->affiliate->discount_pct / 100), 2)
+                              : null;
+            $monthsLeft      = $tenant->affiliate_discount_months_remaining ?? 0;
+        @endphp
+
         <div class="rounded-2xl border-2 border-primary-500 bg-white shadow-sm p-6 text-center">
-            <span class="inline-block bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
-                Oferta especial de lançamento
-            </span>
-            <div class="flex items-center justify-center gap-3">
-                <p class="text-lg text-gray-400 line-through">R$ 79,90</p>
-                <p class="text-4xl font-bold text-gray-900">R$ 57,90</p>
-            </div>
-            <p class="text-gray-400 text-sm mt-1">por mês</p>
+
+            @if ($hasDiscount)
+                {{-- Preço com desconto de cupom --}}
+                <span class="inline-block bg-violet-100 text-violet-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                    Código promocional aplicado 🎉
+                </span>
+                <div class="flex items-center justify-center gap-3">
+                    <p class="text-lg text-gray-400 line-through">R$ {{ number_format($planPrice, 2, ',', '.') }}</p>
+                    <p class="text-4xl font-bold text-gray-900">R$ {{ number_format($discountedPrice, 2, ',', '.') }}</p>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">
+                    por mês nos primeiros {{ $monthsLeft }} {{ $monthsLeft === 1 ? 'mês' : 'meses' }}
+                </p>
+                <p class="text-gray-400 text-xs mt-1">
+                    depois R$ {{ number_format($planPrice, 2, ',', '.') }}/mês
+                </p>
+            @else
+                {{-- Preço normal --}}
+                <span class="inline-block bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                    Oferta especial de lançamento
+                </span>
+                <div class="flex items-center justify-center gap-3">
+                    <p class="text-lg text-gray-400 line-through">R$ 79,90</p>
+                    <p class="text-4xl font-bold text-gray-900">R$ {{ number_format($planPrice, 2, ',', '.') }}</p>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">por mês</p>
+            @endif
 
             <ul class="mt-5 space-y-2 text-sm text-left text-gray-600">
                 @foreach ([

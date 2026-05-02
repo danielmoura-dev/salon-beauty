@@ -13,6 +13,7 @@ class Affiliate extends Model
     protected $fillable = [
         'name',
         'email',
+        'whatsapp',
         'code',
         'commission_pct',
         'discount_pct',

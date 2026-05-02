@@ -218,6 +218,11 @@
                 <input type="email" x-model="editEmail"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-violet-500">
             </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">WhatsApp</label>
+                <input type="text" x-model="editWhatsapp" placeholder="(11) 99999-9999"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-500">
+            </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1.5">Comissão (%)</label>
@@ -256,6 +261,7 @@ function detailPage() {
         paying: false,
         editName: '{{ addslashes($affiliate->name) }}',
         editEmail: '{{ $affiliate->email }}',
+        editWhatsapp: '{{ $affiliate->whatsapp ?? '' }}',
         editCommissionPct: '{{ $affiliate->commission_pct }}',
         editDiscountPct: '{{ $affiliate->discount_pct }}',
         editNotes: '{{ addslashes($affiliate->notes ?? '') }}',
@@ -274,6 +280,7 @@ function detailPage() {
                 body: JSON.stringify({
                     name: self.editName,
                     email: self.editEmail,
+                    whatsapp: self.editWhatsapp,
                     commission_pct: self.editCommissionPct,
                     discount_pct: self.editDiscountPct,
                     notes: self.editNotes,
