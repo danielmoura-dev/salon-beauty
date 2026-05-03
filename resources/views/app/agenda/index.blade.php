@@ -547,8 +547,10 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                        <input type="tel" x-model="clientFormData.phone"
+                        <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp *</label>
+                        <input type="tel" inputmode="tel" :value="clientFormData.phone" required
+                            @input="clientFormData.phone = formatPhone($event.target.value)"
+                            placeholder="(11) 99999-9999"
                             class="w-full rounded-xl border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
                     </div>
                     <div>
@@ -998,7 +1000,8 @@ function agenda() {
 
         // ── Salvar cliente via AJAX ───────────────────────────────────────
         async saveClientForm() {
-            if (!this.clientFormData.name.trim()) { this.clientFormError = 'Informe o nome.'; return; }
+            if (!this.clientFormData.name.trim())  { this.clientFormError = 'Informe o nome.'; return; }
+            if (!this.clientFormData.phone.trim()) { this.clientFormError = 'O WhatsApp é obrigatório.'; return; }
             this.clientFormSaving = true; this.clientFormError = '';
             try {
                 const res = await fetch('/clients', {
@@ -1018,6 +1021,14 @@ function agenda() {
                 }
             } catch { this.clientFormError = 'Erro de conexão.'; }
             finally  { this.clientFormSaving = false; }
+        },
+
+        formatPhone(value) {
+            const d = (value || '').replace(/\D/g, '').slice(0, 11);
+            if (d.length <= 2)  return d;
+            if (d.length <= 6)  return `(${d.slice(0,2)}) ${d.slice(2)}`;
+            if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+            return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
         },
 
         // ── Salvar serviço via AJAX ───────────────────────────────────────

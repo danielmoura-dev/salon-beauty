@@ -39,6 +39,7 @@
             ['route' => 'products',     'icon' => 'box',      'label' => 'Produtos'],
             ['route' => 'expenses',     'icon' => 'wallet',   'label' => 'Despesas'],
             ['route' => 'reports',      'icon' => 'chart',    'label' => 'Relatórios'],
+            ['route' => 'booking-link', 'icon' => 'link',     'label' => 'Meu Link'],
             ['route' => 'settings',     'icon' => 'gear',     'label' => 'Configurações'],
         ];
     @endphp

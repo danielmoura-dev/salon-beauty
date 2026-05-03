@@ -96,6 +96,8 @@ class ProfessionalController extends Controller
 
     private function syncServiceCommissions(Request $request, Professional $professional): void
     {
+        if (! $request->has('custom_commissions')) return;
+
         $custom = $request->input('custom_commissions', []);
         $syncData = [];
 

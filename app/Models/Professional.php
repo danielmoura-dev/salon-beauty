@@ -13,13 +13,14 @@ class Professional extends Model
 
     protected $fillable = [
         'tenant_id', 'user_id', 'name', 'photo', 'specialty',
-        'birthday', 'show_on_agenda', 'receives_commission',
+        'birthday', 'show_on_agenda', 'show_on_booking', 'receives_commission',
         'commission_pct', 'work_schedule',
     ];
 
     protected $casts = [
         'birthday'            => 'date',
         'show_on_agenda'      => 'boolean',
+        'show_on_booking'     => 'boolean',
         'receives_commission' => 'boolean',
         'commission_pct'      => 'decimal:2',
         'work_schedule'       => 'array',

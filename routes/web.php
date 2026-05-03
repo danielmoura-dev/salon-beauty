@@ -27,6 +27,9 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\BookingLinkController;
+use App\Http\Controllers\Public\BookingController as PublicBookingController;
+use App\Http\Controllers\Public\BookingAuthController as PublicBookingAuthController;
 
 
 // Verifica código de afiliado (público, sem auth)
@@ -175,6 +178,25 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
 
     // Relatórios
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');
+
+    // Meu Link (link público de agendamento)
+    Route::get('/booking-link',                                        [BookingLinkController::class, 'index'])->name('booking-link');
+    Route::post('/booking-link',                                       [BookingLinkController::class, 'update'])->name('booking-link.update');
+    Route::post('/booking-link/professionals/{professional}/toggle',   [BookingLinkController::class, 'toggleProfessional'])->name('booking-link.professional.toggle');
+    Route::post('/booking-link/professionals/{professional}/services', [BookingLinkController::class, 'updateProfessionalServices'])->name('booking-link.professional.services');
+});
+
+// --- Página pública de agendamento (sem auth, scoped por slug) ---
+Route::prefix('agendar/{slug}')->name('public.booking.')->group(function () {
+    Route::get('/',                                  [PublicBookingController::class, 'show'])->name('show');
+    Route::post('/auth/check',                       [PublicBookingAuthController::class, 'check'])->name('auth.check');
+    Route::post('/auth/register',                    [PublicBookingAuthController::class, 'register'])->name('auth.register');
+    Route::post('/auth/logout',                      [PublicBookingAuthController::class, 'logout'])->name('auth.logout');
+    Route::get('/professionals',                     [PublicBookingController::class, 'professionals'])->name('professionals');
+    Route::get('/slots',                             [PublicBookingController::class, 'slots'])->name('slots');
+    Route::post('/book',                             [PublicBookingController::class, 'book'])->name('book');
+    Route::get('/agendamentos',                      [PublicBookingController::class, 'myAppointments'])->name('my-appointments');
+    Route::post('/agendamentos/{appointment}/cancel',[PublicBookingController::class, 'cancelAppointment'])->name('cancel');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');

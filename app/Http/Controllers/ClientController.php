@@ -58,11 +58,13 @@ class ClientController extends Controller
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:150'],
-            'phone'    => ['nullable', 'string', 'max:20'],
+            'phone'    => ['required', 'string', 'max:20'],
             'email'    => ['nullable', 'email', 'max:150'],
             'birthday' => ['nullable', 'date'],
             'notes'    => ['nullable', 'string', 'max:1000'],
             'photo'    => ['nullable', 'image', 'max:2048'],
+        ], [
+            'phone.required' => 'O WhatsApp é obrigatório.',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -83,11 +85,13 @@ class ClientController extends Controller
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:150'],
-            'phone'    => ['nullable', 'string', 'max:20'],
+            'phone'    => ['required', 'string', 'max:20'],
             'email'    => ['nullable', 'email', 'max:150'],
             'birthday' => ['nullable', 'date'],
             'notes'    => ['nullable', 'string', 'max:1000'],
             'photo'    => ['nullable', 'image', 'max:2048'],
+        ], [
+            'phone.required' => 'O WhatsApp é obrigatório.',
         ]);
 
         if ($request->hasFile('photo')) {

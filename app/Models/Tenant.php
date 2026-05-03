@@ -17,6 +17,7 @@ class Tenant extends Model
         'email',
         'phone',
         'logo',
+        'banner',
         'plan_status',
         'trial_ends_at',
         'stripe_customer_id',
@@ -28,12 +29,20 @@ class Tenant extends Model
         'agenda_end_hour',
         'affiliate_id',
         'affiliate_discount_months_remaining',
+        'booking_slug',
+        'booking_active',
+        'booking_interval_min',
+        'booking_show_prices',
+        'booking_banner_color',
     ];
 
     protected $casts = [
         'trial_ends_at'                       => 'datetime',
         'allow_duplicate_phone'               => 'boolean',
         'show_pending_orders'                 => 'boolean',
+        'booking_active'                      => 'boolean',
+        'booking_show_prices'                 => 'boolean',
+        'booking_interval_min'                => 'integer',
         'credit_card_fee'                     => 'decimal:2',
         'debit_card_fee'                      => 'decimal:2',
         'affiliate_discount_months_remaining' => 'integer',
