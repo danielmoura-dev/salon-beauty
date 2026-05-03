@@ -36,29 +36,34 @@
             </div>
 
             <div class="mt-4 flex gap-2">
-                @if ($client)
-                    <a href="{{ route('public.booking.my-appointments', $tenant->booking_slug) }}"
-                       class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary-700 px-4 py-2.5 text-sm font-medium hover:bg-primary-100">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
-                        Meus agendamentos
-                    </a>
-                    <form method="POST" action="{{ route('public.booking.auth.logout', $tenant->booking_slug) }}">
-                        @csrf
-                        <button type="submit" class="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
-                            Sair
-                        </button>
-                    </form>
-                @else
+                {{-- Logado: botões reativos via Alpine --}}
+                <template x-if="client">
+                    <div class="flex gap-2 w-full">
+                        <a href="{{ route('public.booking.my-appointments', $tenant->booking_slug) }}"
+                           class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-50 text-primary-700 px-4 py-2.5 text-sm font-medium hover:bg-primary-100">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+                            Meus agendamentos
+                        </a>
+                        <form method="POST" action="{{ route('public.booking.auth.logout', $tenant->booking_slug) }}">
+                            @csrf
+                            <button type="submit" class="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
+                                Sair
+                            </button>
+                        </form>
+                    </div>
+                </template>
+                {{-- Deslogado --}}
+                <template x-if="!client">
                     <button @click="openLoginModal()"
                        class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-primary-700">
                         Entrar pelo WhatsApp
                     </button>
-                @endif
+                </template>
             </div>
 
-            @if ($client)
-                <p class="mt-3 text-xs text-gray-400 text-center">Olá, <span class="font-semibold text-gray-700">{{ $client->name }}</span></p>
-            @endif
+            <p x-show="client" x-cloak class="mt-3 text-xs text-gray-400 text-center">
+                Olá, <span class="font-semibold text-gray-700" x-text="client?.name"></span>
+            </p>
         </div>
     </div>
 
