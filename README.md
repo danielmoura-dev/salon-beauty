@@ -224,4 +224,6 @@ routes/
 
 ## Licença
 
-Distribuído sob a licença [MIT](https://opensource.org/licenses/MIT).
+Copyright © 2026 Daniel Moura. Todos os direitos reservados.
+
+Este software é proprietário e confidencial. É proibida a cópia, distribuição ou uso sem autorização expressa do autor.
