@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient;
+use Stripe\Exception\ApiErrorException;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\BillingPortal\Session as StripePortalSession;
@@ -17,17 +19,17 @@ class SubscriptionController extends Controller
     {
         $tenant       = auth()->user()->tenant->load(['subscription', 'affiliate']);
         $subscription = $tenant->subscription;
+        $pixSub       = $tenant->subscriptionFor('mercadopago');
         $pixData      = null;
 
         // Se há um pagamento PIX pendente, recupera o QR do MP para não perder ao navegar
-        if ($subscription
-            && $subscription->gateway === 'mercadopago'
-            && $subscription->status === 'pending'
-            && $subscription->gateway_subscription_id
+        if ($pixSub
+            && $pixSub->status === 'pending'
+            && $pixSub->gateway_subscription_id
         ) {
             try {
                 MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
-                $payment = (new PaymentClient())->get((int) $subscription->gateway_subscription_id);
+                $payment = (new PaymentClient())->get((int) $pixSub->gateway_subscription_id);
 
                 if (in_array($payment->status, ['pending', 'in_process'])) {
                     $pixData = [
@@ -96,8 +98,8 @@ class SubscriptionController extends Controller
 
         // Se tem PIX ativo com período futuro, Stripe só começa a cobrar após esse período
         // (o cliente não paga duas vezes pelo mesmo mês)
-        $pixSub = $tenant->subscription;
-        if ($pixSub?->gateway === 'mercadopago'
+        $pixSub = $tenant->subscriptionFor('mercadopago');
+        if ($pixSub
             && $pixSub->status === 'active'
             && $pixSub->current_period_end?->isFuture()
         ) {
@@ -107,7 +109,7 @@ class SubscriptionController extends Controller
         }
 
         // Se tem PIX pendente (QR não pago), cancela no MP antes de ir pro Stripe
-        if ($pixSub?->gateway === 'mercadopago'
+        if ($pixSub
             && $pixSub->status === 'pending'
             && $pixSub->gateway_subscription_id
         ) {
@@ -115,7 +117,12 @@ class SubscriptionController extends Controller
             $pixSub->update(['status' => 'cancelled']);
         }
 
-        $session = StripeSession::create($params);
+        try {
+            $session = StripeSession::create($params);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe checkout falhou: ' . $e->getMessage(), ['tenant_id' => $tenant->id]);
+            return back()->with('error', 'Não foi possível iniciar o pagamento agora. Tente novamente em instantes.');
+        }
 
         return redirect($session->url);
     }
@@ -162,14 +169,16 @@ class SubscriptionController extends Controller
             return response()->json(['error' => 'Você já tem uma assinatura ativa via cartão.'], 422);
         }
 
+        $pixSub = $tenant->subscriptionFor('mercadopago');
+
         // Reutiliza pagamento pendente existente (evita spam de QR codes)
-        if ($tenant->subscription?->gateway === 'mercadopago'
-            && $tenant->subscription->status === 'pending'
-            && $tenant->subscription->gateway_subscription_id
+        if ($pixSub
+            && $pixSub->status === 'pending'
+            && $pixSub->gateway_subscription_id
         ) {
             try {
                 MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
-                $existing = (new PaymentClient())->get((int) $tenant->subscription->gateway_subscription_id);
+                $existing = (new PaymentClient())->get((int) $pixSub->gateway_subscription_id);
 
                 if (in_array($existing->status, ['pending', 'in_process'])) {
                     return response()->json([
@@ -197,28 +206,34 @@ class SubscriptionController extends Controller
             $pixAmount = round($planPrice * (1 - $tenant->affiliate->discount_pct / 100), 2);
         }
 
-        $payment = (new PaymentClient())->create([
-            'transaction_amount' => $pixAmount,
-            'description'        => 'Salon Beauty — Plano Mensal',
-            'payment_method_id'  => 'pix',
-            'payer'              => [
-                // O Mercado Pago usa este email apenas para registro interno.
-                // Para desabilitar o e-mail de confirmação enviado ao pagador,
-                // acesse: MP Dashboard → Configurações → Notificações → desabilitar "Confirmação de pagamento".
-                'email'      => $tenant->email,
-                'first_name' => $tenant->name,
-            ],
-            'external_reference' => (string) $tenant->id,
-            'notification_url'   => route('webhooks.mercadopago'),
-            'date_of_expiration' => now()->addHours(24)->format('Y-m-d\TH:i:s.000P'),
-        ]);
+        try {
+            $payment = (new PaymentClient())->create([
+                'transaction_amount' => $pixAmount,
+                'description'        => 'Salon Beauty — Plano Mensal',
+                'payment_method_id'  => 'pix',
+                'payer'              => [
+                    // O Mercado Pago usa este email apenas para registro interno.
+                    // Para desabilitar o e-mail de confirmação enviado ao pagador,
+                    // acesse: MP Dashboard → Configurações → Notificações → desabilitar "Confirmação de pagamento".
+                    'email'      => $tenant->email,
+                    'first_name' => $tenant->name,
+                ],
+                'external_reference' => (string) $tenant->id,
+                'notification_url'   => route('webhooks.mercadopago'),
+                'date_of_expiration' => now()->addHours(24)->format('Y-m-d\TH:i:s.000P'),
 
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Mercado Pago PIX falhou: ' . $e->getMessage(), ['tenant_id' => $tenant->id]);
+            return response()->json(['error' => 'Não foi possível gerar o PIX agora. Tente novamente em instantes.'], 502);
+        }
+
+        // Mantém current_period_end: o período já pago segue valendo até vencer e a renovação soma a partir dele
         Subscription::updateOrCreate(
             ['tenant_id' => $tenant->id, 'gateway' => 'mercadopago'],
             [
                 'gateway_subscription_id' => (string) $payment->id,
                 'status'                  => 'pending',
-                'current_period_end'      => null,
             ]
         );
 
@@ -232,7 +247,7 @@ class SubscriptionController extends Controller
     // ── PIX: polling de status ──────────────────────────────────────
     public function pixStatus()
     {
-        $subscription = auth()->user()->tenant->subscription;
+        $subscription = auth()->user()->tenant->subscriptionFor('mercadopago');
 
         if ($subscription && $subscription->status === 'active') {
             return response()->json(['status' => 'active']);
@@ -246,10 +261,15 @@ class SubscriptionController extends Controller
     {
         Stripe::setApiKey(config('services.stripe.secret'));
 
-        $session = StripePortalSession::create([
-            'customer'   => $customerId,
-            'return_url' => route('subscription.index'),
-        ]);
+        try {
+            $session = StripePortalSession::create([
+                'customer'   => $customerId,
+                'return_url' => route('subscription.index'),
+            ]);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe portal falhou: ' . $e->getMessage());
+            return back()->with('error', 'Não foi possível abrir o portal de pagamento agora. Tente novamente em instantes.');
+        }
 
         return redirect($session->url);
     }

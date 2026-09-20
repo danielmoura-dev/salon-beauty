@@ -65,10 +65,40 @@ class Tenant extends Model
 
     public function isActive(): bool
     {
-        if ($this->plan_status === 'active')
+        if ($this->plan_status === 'active') {
+            return $this->hasPaidAccess();
+        }
+
+        return $this->plan_status === 'trial' && (bool) $this->trial_ends_at?->isFuture();
+    }
+
+    /**
+     * `plan_status = active` só vale enquanto houver um pagamento cobrindo o período:
+     * - Stripe renova sozinho e avisa por webhook (status da assinatura);
+     * - PIX é avulso: o acesso termina no vencimento (current_period_end), nada o desativa depois.
+     * Sem nenhuma assinatura registrada (ativação manual) confia-se no plan_status.
+     */
+    private function hasPaidAccess(): bool
+    {
+        $subscriptions = Subscription::where('tenant_id', $this->getKey())->get();
+
+        if ($subscriptions->isEmpty()) {
             return true;
-        if ($this->plan_status === 'trial' && $this->trial_ends_at?->isFuture())
-            return true;
-        return false;
+        }
+
+        return $subscriptions->contains(fn (Subscription $s) => match ($s->gateway) {
+            'stripe'      => $s->status === 'active',
+            // pending = novo QR gerado para renovar; o período atual segue valendo até vencer
+            'mercadopago' => in_array($s->status, ['active', 'pending'], true)
+                && $s->current_period_end !== null
+                && $s->current_period_end->gte(today()),
+            default       => false,
+        });
+    }
+
+    /** Assinatura deste tenant em um gateway específico (há no máximo uma por gateway). */
+    public function subscriptionFor(string $gateway): ?Subscription
+    {
+        return Subscription::where('tenant_id', $this->getKey())->where('gateway', $gateway)->first();
     }
 }

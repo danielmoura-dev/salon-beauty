@@ -3,10 +3,13 @@
 namespace Tests\Unit;
 
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class TenantPlanTest extends TestCase
 {
+    use RefreshDatabase;
+
     private function tenant(string $status, ?string $trialEnds = null): Tenant
     {
         $t = new Tenant();

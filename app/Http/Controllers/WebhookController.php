@@ -320,12 +320,18 @@ class WebhookController extends Controller
         }
 
         DB::transaction(function () use ($tenant, $tenantId, $paymentId, $payment) {
+            // Renovação antecipada soma um mês ao vencimento atual (não perde os dias que sobravam);
+            // se já venceu (ou é o primeiro pagamento), conta um mês a partir de hoje.
+            $current = $tenant->subscriptionFor('mercadopago')?->current_period_end;
+            $base    = $current && $current->gte(today()) ? $current->copy() : today();
+            $newEnd  = $base->addMonthNoOverflow();
+
             Subscription::updateOrCreate(
                 ['tenant_id' => $tenantId, 'gateway' => 'mercadopago'],
                 [
                     'gateway_subscription_id' => $paymentId,
                     'status'                  => 'active',
-                    'current_period_end'      => now()->addMonth(),
+                    'current_period_end'      => $newEnd,
                 ]
             );
 
@@ -340,7 +346,7 @@ class WebhookController extends Controller
             );
         });
 
-        Log::info("PIX aprovado — tenant {$tenantId} ativo até " . now()->addMonth()->toDateString());
+        Log::info("PIX aprovado — tenant {$tenantId} ativo até " . $tenant->subscriptionFor('mercadopago')?->current_period_end?->toDateString());
     }
 
     private function recordAffiliateCommission(
