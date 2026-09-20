@@ -49,7 +49,7 @@ class AffiliateController extends Controller
             ->get();
 
         $commissionsByPeriod = AffiliateCommission::where('affiliate_id', $affiliate->id)
-            ->selectRaw('period, COUNT(*) as payment_count, SUM(commission_amount) as total, SUM(CASE WHEN status="paid" THEN commission_amount ELSE 0 END) as paid, SUM(CASE WHEN status="pending" THEN commission_amount ELSE 0 END) as pending')
+            ->selectRaw("period, COUNT(*) as payment_count, SUM(commission_amount) as total, SUM(CASE WHEN status = 'paid' THEN commission_amount ELSE 0 END) as paid, SUM(CASE WHEN status = 'pending' THEN commission_amount ELSE 0 END) as pending")
             ->groupBy('period')
             ->orderByDesc('period')
             ->get();

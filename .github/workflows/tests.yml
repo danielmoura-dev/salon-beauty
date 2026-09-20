@@ -1,4 +1,4 @@
-name: Tests
+name: Testes
 
 on:
   push:
@@ -7,37 +7,88 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Testes
+  testes:
+    name: Testes (${{ matrix.banco }})
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - banco: sqlite
+          - banco: mysql
+            porta: 3306
+            usuario: root
+          - banco: pgsql
+            porta: 5432
+            usuario: postgres
+
+    # Os dois serviços sobem em todas as execuções; só o banco da matriz é usado.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: salon_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -psecret"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: salon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
     steps:
-      - name: Checkout
+      - name: Baixar o código
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Instalar o PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, intl
+          extensions: mbstring, pdo_sqlite, sqlite3, pdo_mysql, pdo_pgsql, bcmath, intl
           coverage: none
 
-      - name: Setup Node
+      - name: Instalar o Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Instalar dependências
         run: |
           composer install --no-interaction --prefer-dist --no-progress
           npm ci
           npm run build
 
-      - name: Prepare app
+      - name: Preparar a aplicação
         run: |
           cp .env.example .env
           php artisan key:generate
 
-      - name: Run tests
+      - name: Executar os testes (SQLite)
+        if: matrix.banco == 'sqlite'
+        run: php artisan test
+
+      - name: Executar os testes (MySQL ou PostgreSQL)
+        if: matrix.banco != 'sqlite'
+        env:
+          DB_CONNECTION: ${{ matrix.banco }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ matrix.porta }}
+          DB_DATABASE: salon_test
+          DB_USERNAME: ${{ matrix.usuario }}
+          DB_PASSWORD: secret
         run: php artisan test

@@ -113,9 +113,9 @@ class CommissionController extends Controller
             'date_to'       => ['required', 'date'],
             'notes'         => ['nullable', 'string', 'max:500'],
             'item_ids'      => ['nullable', 'array'],
-            'item_ids.*'    => ['string'],
+            'item_ids.*'    => ['uuid'],
             'voucher_ids'   => ['nullable', 'array'],
-            'voucher_ids.*' => ['string'],
+            'voucher_ids.*' => ['uuid'],
         ]);
 
         $periodStart = $data['period_type'] === 'custom' && ($data['date_from'] ?? null)

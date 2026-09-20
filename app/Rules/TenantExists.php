@@ -5,6 +5,7 @@ namespace App\Rules;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Equivalente ao `exists:tabela,coluna`, mas só aceita registros do salão
@@ -22,8 +23,10 @@ class TenantExists implements ValidationRule
     {
         $tenantId = auth()->user()?->tenant_id;
 
+        // Só consulta com UUID válido: o PostgreSQL lança erro (500) em vez de "não encontrado"
         $exists = $tenantId
-            && is_scalar($value)
+            && is_string($value)
+            && Str::isUuid($value)
             && DB::table($this->table)
                 ->where($this->column, $value)
                 ->where('tenant_id', $tenantId)

@@ -92,7 +92,7 @@
 | Camada | Tecnologia |
 |---|---|
 | Backend | Laravel 13, PHP 8.3 |
-| Banco de dados | SQLite (dev) / MySQL / PostgreSQL |
+| Banco de dados | SQLite (dev), MySQL 8.4 e PostgreSQL 16 (a suíte roda nos três, inclusive no CI) |
 | Frontend | Alpine.js 3, Tailwind CSS 4, Vite 8 |
 | Pagamentos | Stripe, Mercado Pago (PIX) |
 | E-mail transacional | Resend |
@@ -198,6 +198,22 @@ A suíte roda em SQLite em memória (sem serviços externos; Stripe e Mercado Pa
 - autenticação (limite de tentativas, recuperação de senha, verificação de e-mail, login com Google).
 
 O GitHub Actions ([.github/workflows/tests.yml](.github/workflows/tests.yml)) roda a suíte a cada push na `main` e em pull requests.
+
+### Rodando a suíte no MySQL e no PostgreSQL
+
+Sobe os dois bancos descartáveis com Docker (dados só em memória) e roda os testes em cada um:
+
+```bash
+docker run -d --name salon-mysql -p 127.0.0.1:3307:3306 -e MYSQL_ROOT_PASSWORD=secret -e MYSQL_DATABASE=salon_test --tmpfs /var/lib/mysql mysql:8.4
+docker run -d --name salon-pg -p 127.0.0.1:5433:5432 -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=salon_test --tmpfs /var/lib/postgresql/data postgres:16
+
+DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3307 DB_DATABASE=salon_test DB_USERNAME=root DB_PASSWORD=secret php artisan test
+DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5433 DB_DATABASE=salon_test DB_USERNAME=postgres DB_PASSWORD=secret php artisan test
+```
+
+Diferenças que já causaram bugs e que os testes de `CompatibilidadeBancoTest` protegem: o PostgreSQL não tem `MAX()` para UUID, trata aspas duplas como identificador (use aspas simples nos literais SQL), diferencia maiúsculas em `LIKE` (use `whereLike`), rejeita texto que não seja UUID em colunas UUID e mantém a constraint `CHECK` de colunas que deixaram de ser enum.
+
+A trava contra reserva dupla no agendamento público (`lockForUpdate` no profissional) só tem efeito no MySQL e no PostgreSQL; o SQLite ignora esse comando. Ela foi validada disparando 8 reservas simultâneas do mesmo horário: sem a trava passaram de 4 a 7, com a trava passou sempre 1.
 
 ---
 

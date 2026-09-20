@@ -50,7 +50,9 @@ class Tenant extends Model
 
     public function subscription(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Subscription::class)->latestOfMany();
+        // A linha mais recentemente atualizada (as linhas são reaproveitadas por gateway).
+        // Não usa latestOfMany(): ele agrega MAX(id) e o PostgreSQL não tem MAX() para UUID.
+        return $this->hasOne(Subscription::class)->latest('updated_at');
     }
 
     public function users(): HasMany

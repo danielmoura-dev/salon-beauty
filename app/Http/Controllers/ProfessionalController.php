@@ -7,13 +7,14 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProfessionalController extends Controller
 {
     public function index(Request $request)
     {
         $professionals = Professional::orderBy('name')
-            ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            ->when($request->search, fn($q, $s) => $q->whereLike('name', "%{$s}%"))
             ->with(['services' => fn($q) => $q->withPivot('commission_pct')])
             ->get();
 
@@ -110,7 +111,8 @@ class ProfessionalController extends Controller
         $custom = $request->input('custom_commissions', []);
 
         // Só serviços deste salão (a chave do array vem do cliente e não é validada pelo `.*`)
-        $ownServiceIds = Service::whereIn('id', array_keys($custom))->pluck('id')->all();
+        $validKeys     = array_values(array_filter(array_keys($custom), fn ($k) => is_string($k) && Str::isUuid($k)));
+        $ownServiceIds = Service::whereIn('id', $validKeys)->pluck('id')->all();
         $syncData = [];
 
         foreach ($custom as $serviceId => $pct) {

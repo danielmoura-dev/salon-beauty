@@ -14,8 +14,8 @@ class ClientController extends Controller
             ->when($request->search, fn($q) =>
                 // agrupado: sem parênteses o orWhere ignora os filtros de saldo abaixo
                 $q->where(fn($s) => $s
-                    ->where('name', 'like', "%{$request->search}%")
-                    ->orWhere('phone', 'like', "%{$request->search}%"))
+                    ->whereLike('name', "%{$request->search}%")
+                    ->orWhereLike('phone', "%{$request->search}%"))
             )
             ->when($request->filter === 'debtors',  fn($q) => $q->where('balance', '<', 0))
             ->when($request->filter === 'credits',  fn($q) => $q->where('balance', '>', 0))
@@ -35,8 +35,8 @@ class ClientController extends Controller
 
         if ($q) {
             $query->where(function ($sub) use ($q) {
-                $sub->where('name', 'like', "%{$q}%")
-                    ->orWhere('phone', 'like', "%{$q}%");
+                $sub->whereLike('name', "%{$q}%")
+                    ->orWhereLike('phone', "%{$q}%");
             });
         }
 
