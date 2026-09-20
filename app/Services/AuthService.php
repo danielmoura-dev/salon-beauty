@@ -90,27 +90,58 @@ class AuthService
         }
     }
 
+    /**
+     * @throws \DomainException quando o Google não garante que o e-mail é da pessoa
+     */
     public function findOrCreateFromGoogle(SocialiteUser $socialUser): User
     {
-        // Tenta encontrar usuário existente pelo google_id ou email
-        $user = User::where('google_id', $socialUser->getId())
-                    ->orWhere('email', $socialUser->getEmail())
-                    ->first();
+        $googleId = $socialUser->getId();
+        $email    = $socialUser->getEmail();
+
+        $user = User::where('google_id', $googleId)->first();
+
+        if (! $user) {
+            // Vincular/criar por e-mail só é seguro se o Google confirma que o e-mail pertence à pessoa
+            $raw      = (array) ($socialUser->user ?? []);
+            $verified = (bool) ($raw['email_verified'] ?? $raw['verified_email'] ?? false);
+
+            if (! $email || ! $verified) {
+                throw new \DomainException('O Google não confirmou o e-mail desta conta.');
+            }
+
+            $user = User::where('email', $email)->first();
+
+            if ($user && ! $user->email_verified_at) {
+                // Conta criada com senha e nunca confirmada: quem cadastrou pode não ser o dono do e-mail.
+                // A senha é descartada para o cadastro pré-existente não virar uma porta dos fundos.
+                $user->password = Str::random(64);
+            }
+        }
 
         if ($user) {
-            $user->update([
-                'google_id' => $socialUser->getId(),
-                'avatar'    => $user->avatar ?? $socialUser->getAvatar(),
-            ]);
+            $user->forceFill([
+                'google_id'         => $googleId,
+                'avatar'            => $user->avatar ?? $socialUser->getAvatar(),
+                'email_verified_at' => $user->email_verified_at ?? now(),
+            ])->save();
+
             return $user;
         }
 
         // Novo usuário via Google — cria tenant junto
-        return $this->registerWithTenant([
+        $user = $this->registerWithTenant([
             'name'          => $socialUser->getName(),
             'business_name' => $socialUser->getName() . "'s Salão",
-            'email'         => $socialUser->getEmail(),
+            'email'         => $email,
             'password'      => null,
         ]);
+
+        $user->forceFill([
+            'google_id'         => $googleId,
+            'avatar'            => $socialUser->getAvatar(),
+            'email_verified_at' => now(),
+        ])->save();
+
+        return $user;
     }
 }

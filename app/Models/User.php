@@ -46,8 +46,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function verifyCode(string $code): bool
     {
-        return $this->email_verification_code === $code
-            && $this->email_verification_code_expires_at?->isFuture();
+        return is_string($this->email_verification_code)
+            && hash_equals($this->email_verification_code, $code)
+            && (bool) $this->email_verification_code_expires_at?->isFuture();
     }
 
     public function sendEmailVerificationNotification(): void

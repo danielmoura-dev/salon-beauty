@@ -23,9 +23,14 @@ class GoogleController extends Controller
             return redirect()->route('login')->withErrors(['email' => 'Falha na autenticação com Google.']);
         }
 
-        $user = $this->authService->findOrCreateFromGoogle($socialUser);
+        try {
+            $user = $this->authService->findOrCreateFromGoogle($socialUser);
+        } catch (\DomainException $e) {
+            return redirect()->route('login')->withErrors(['email' => $e->getMessage()]);
+        }
 
         auth()->login($user, true);
+        request()->session()->regenerate();
 
         if (! $user->email_verified_at) {
             $user->markEmailAsVerified();

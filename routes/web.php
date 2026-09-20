@@ -48,18 +48,18 @@ Route::get('/affiliate-code/check', function (\Illuminate\Http\Request $request)
 // --- Rotas públicas ---
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'showForm'])->name('register');
-    Route::post('/register', [RegisterController::class, 'register']);
+    Route::post('/register', [RegisterController::class, 'register'])->middleware('throttle:register');
 
     Route::get('/login', [LoginController::class, 'showForm'])->name('login');
-    Route::post('/login', [LoginController::class, 'login']);
+    Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login');
 
     Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
     Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
 
     Route::get('/password/forgot', [ForgotPasswordController::class, 'showForm'])->name('password.request');
-    Route::post('/password/forgot', [ForgotPasswordController::class, 'sendLink'])->name('password.email');
+    Route::post('/password/forgot', [ForgotPasswordController::class, 'sendLink'])->middleware('throttle:password-reset')->name('password.email');
     Route::get('/password/reset/{token}', [ResetPasswordController::class, 'showForm'])->name('password.reset');
-    Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
+    Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->middleware('throttle:password-reset')->name('password.update');
 });
 
 // Webhooks — sem CSRF, sem auth
@@ -78,7 +78,7 @@ Route::middleware('auth')->group(function () {
         $user->markEmailAsVerified();
         $user->update(['email_verification_code' => null, 'email_verification_code_expires_at' => null]);
         return redirect()->route('onboarding');
-    })->name('verification.verify');
+    })->middleware('throttle:email-verify')->name('verification.verify');
     Route::post('/email/resend', function (\Illuminate\Http\Request $request) {
         $request->user()->sendEmailVerificationNotification();
         return back()->with('success', 'Novo código enviado para o seu e-mail!');
@@ -189,14 +189,14 @@ Route::middleware(['auth', 'verified', 'subscription.active'])->group(function (
 // --- Página pública de agendamento (sem auth, scoped por slug) ---
 Route::prefix('agendar/{slug}')->name('public.booking.')->group(function () {
     Route::get('/',                                  [PublicBookingController::class, 'show'])->name('show');
-    Route::post('/auth/check',                       [PublicBookingAuthController::class, 'check'])->name('auth.check');
-    Route::post('/auth/register',                    [PublicBookingAuthController::class, 'register'])->name('auth.register');
+    Route::post('/auth/check',                       [PublicBookingAuthController::class, 'check'])->middleware('throttle:booking-auth')->name('auth.check');
+    Route::post('/auth/register',                    [PublicBookingAuthController::class, 'register'])->middleware('throttle:booking-auth')->name('auth.register');
     Route::post('/auth/logout',                      [PublicBookingAuthController::class, 'logout'])->name('auth.logout');
-    Route::get('/professionals',                     [PublicBookingController::class, 'professionals'])->name('professionals');
-    Route::get('/slots',                             [PublicBookingController::class, 'slots'])->name('slots');
-    Route::post('/book',                             [PublicBookingController::class, 'book'])->name('book');
+    Route::get('/professionals',                     [PublicBookingController::class, 'professionals'])->middleware('throttle:booking-read')->name('professionals');
+    Route::get('/slots',                             [PublicBookingController::class, 'slots'])->middleware('throttle:booking-read')->name('slots');
+    Route::post('/book',                             [PublicBookingController::class, 'book'])->middleware('throttle:booking-write')->name('book');
     Route::get('/agendamentos',                      [PublicBookingController::class, 'myAppointments'])->name('my-appointments');
-    Route::post('/agendamentos/{appointment}/cancel',[PublicBookingController::class, 'cancelAppointment'])->name('cancel');
+    Route::post('/agendamentos/{appointment}/cancel',[PublicBookingController::class, 'cancelAppointment'])->middleware('throttle:booking-write')->name('cancel');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
