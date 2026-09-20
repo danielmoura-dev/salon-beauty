@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    $profJson    = json_encode(array_values($byProfessional));
+    $profJson    = array_values($byProfessional);
     $revTotal    = $revenueTotal;
     $recTotal    = $totalReceived;
     $commCalc    = $totalCommissionCalc;
@@ -446,7 +446,7 @@ function reportPage() {
         professionals: [],
 
         init() {
-            this.professionals = {!! $profJson !!};
+            this.professionals = @json($profJson);
         },
 
         fmt(value) {

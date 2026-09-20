@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Dates;
 use App\Rules\TenantExists;
 use App\Models\Category;
 use App\Models\Expense;
@@ -14,9 +15,7 @@ class ExpenseController extends Controller
 {
     public function index(Request $request)
     {
-        $month = $request->month
-            ? Carbon::parse($request->month . '-01')
-            : Carbon::now()->startOfMonth();
+        $month = Dates::month($request->month);
 
         $expenses = Expense::with('category')
             ->whereYear('due_date', $month->year)

@@ -70,7 +70,8 @@
 - Planos via **Stripe** (cartão de crédito) e **Mercado Pago** (PIX)
 - Período de trial configurável
 - Cupons de desconto por número de meses
-- Webhooks para Stripe e Mercado Pago processados em fila
+- Webhooks para Stripe e Mercado Pago com assinatura verificada, processamento idempotente (reenvios não duplicam comissões) e resposta 5xx em caso de falha para o gateway reenviar
+- Acesso via PIX expira no fim do período pago; renovar antes do vencimento soma um mês ao vencimento atual
 - Portal do cliente Stripe para autogerenciamento
 
 ### Sistema de Afiliados
@@ -96,7 +97,7 @@
 | Pagamentos | Stripe, Mercado Pago (PIX) |
 | E-mail transacional | Resend |
 | Login social | Google OAuth (Laravel Socialite) |
-| Filas | Database queue (Laravel Queue) |
+| Filas | Configurado (`database`), mas o app ainda não usa jobs: webhooks e e-mails rodam de forma síncrona |
 | Imagens | Cropper.js — logo 1:1 e banner 3:1 |
 
 ---
@@ -187,6 +188,34 @@ Executa em paralelo:
 ```bash
 composer run test
 ```
+
+A suíte roda em SQLite em memória (sem serviços externos; Stripe e Mercado Pago são simulados) e cobre:
+
+- isolamento entre salões (multi-tenancy) em todas as rotas de escrita e nas referências entre registros;
+- webhooks (assinatura, idempotência, ativação e expiração de assinaturas);
+- comandas, estoque, pagamentos, saldo de cliente e comissões, incluindo atomicidade (falha no meio não deixa dados pela metade);
+- agendamento público (horários, conflitos, limites e concorrência);
+- autenticação (limite de tentativas, recuperação de senha, verificação de e-mail, login com Google).
+
+O GitHub Actions ([.github/workflows/tests.yml](.github/workflows/tests.yml)) roda a suíte a cada push na `main` e em pull requests.
+
+---
+
+## Checklist para colocar em produção
+
+O repositório não faz deploy automático. Antes de publicar em um servidor:
+
+- `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` com HTTPS e `php artisan key:generate`.
+- Banco MySQL/PostgreSQL (`DB_CONNECTION`), com backups automáticos; SQLite serve só para desenvolvimento.
+- Chaves reais: Stripe (`STRIPE_*`), Mercado Pago (`MERCADOPAGO_*`), Resend e Google OAuth. **Os webhooks recusam eventos se o segredo (`STRIPE_WEBHOOK_SECRET`, `MERCADOPAGO_WEBHOOK_SECRET`) não estiver configurado.**
+- Se houver proxy reverso ou CDN na frente (Nginx como proxy HTTP, Cloudflare...), configure `trustProxies` em `bootstrap/app.php`. Sem isso o IP de todos os usuários é o do proxy e os limites de tentativa por IP (login, agendamento público) passam a valer para todo mundo junto.
+- `php artisan migrate --force`, `npm run build` e `php artisan optimize`.
+- Monitoramento de erros (ex.: Sentry) e alerta para falhas de webhook; os erros já são registrados no log.
+
+### Limitações conhecidas
+
+- O cliente final se identifica na página pública apenas pelo WhatsApp, **sem código de verificação**. Quem souber o número de um cliente consegue ver os agendamentos dele naquele salão. O limite de tentativas e a exibição só do primeiro nome reduzem o abuso, mas a correção completa exige enviar um código por WhatsApp/SMS.
+- `Tenant::isActive()` consulta as assinaturas a cada requisição; se isso pesar, vale cachear por poucos minutos.
 
 ---
 

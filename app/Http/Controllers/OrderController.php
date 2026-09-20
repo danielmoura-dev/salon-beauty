@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Dates;
 use App\Rules\TenantExists;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -18,7 +19,7 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
+        $date = Dates::parse($request->date);
 
         // Carrega tudo de uma vez: todas as comandas do dia + abertas de dias anteriores
         // O filtro de status (Abertas/Fechadas/Todas) é feito client-side pelo Alpine

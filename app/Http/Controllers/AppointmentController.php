@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Dates;
 use App\Rules\TenantExists;
 use App\Models\Appointment;
 use App\Models\Category;
@@ -22,9 +23,7 @@ class AppointmentController extends Controller
 
     public function index(Request $request)
     {
-        $date = $request->date
-            ? Carbon::parse($request->date)
-            : Carbon::today();
+        $date = Dates::parse($request->date);
 
         // Profissionais visíveis na agenda
         $professionals = Professional::where('show_on_agenda', true)

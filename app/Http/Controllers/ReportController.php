@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Dates;
 use App\Models\CommissionPayment;
 use App\Models\Expense;
 use App\Models\Order;
@@ -17,14 +18,12 @@ class ReportController extends Controller
         $mode = $request->mode === 'day' ? 'day' : 'month';
 
         if ($mode === 'day') {
-            $date  = $request->date ? Carbon::parse($request->date) : Carbon::today();
+            $date  = Dates::parse($request->date);
             $start = $date->copy()->startOfDay();
             $end   = $date->copy()->endOfDay();
         } else {
             $date  = null;
-            $month = $request->month
-                ? Carbon::parse($request->month . '-01')
-                : Carbon::now()->startOfMonth();
+            $month = Dates::month($request->month);
             $start = $month->copy()->startOfMonth();
             $end   = $month->copy()->endOfMonth();
         }

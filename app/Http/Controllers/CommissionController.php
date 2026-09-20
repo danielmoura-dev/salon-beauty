@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Dates;
 use App\Models\CommissionPayment;
 use App\Models\OrderItem;
 use App\Models\Professional;
@@ -38,9 +39,8 @@ class CommissionController extends Controller
 
     public function detail(Request $request, Professional $professional)
     {
-        $periodEnd = $request->date_to
-            ? Carbon::parse($request->date_to)->endOfDay()
-            : now()->endOfDay();
+        $periodEnd = Dates::parse($request->date_to, now())->endOfDay();
+        $periodStart = $request->date_from ? Dates::parse($request->date_from)->startOfDay() : null;
 
         $query = OrderItem::where('professional_id', $professional->id)
             ->whereNull('commission_paid_at')
@@ -48,8 +48,8 @@ class CommissionController extends Controller
             ->whereHas('order', fn($q) => $q->where('status', 'closed'))
             ->with(['order.client', 'order.payments']);
 
-        if ($request->date_from) {
-            $query->whereHas('order', fn($q) => $q->where('created_at', '>=', Carbon::parse($request->date_from)->startOfDay()));
+        if ($periodStart) {
+            $query->whereHas('order', fn($q) => $q->where('created_at', '>=', $periodStart));
         }
 
         $query->whereHas('order', fn($q) => $q->where('created_at', '<=', $periodEnd));
