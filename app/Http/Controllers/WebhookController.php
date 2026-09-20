@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\Models\Tenant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient;
@@ -22,13 +23,16 @@ class WebhookController extends Controller
     {
         $payload   = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
+        $secret    = config('services.stripe.webhook_secret');
+
+        // Sem segredo configurado qualquer um consegue assinar um evento (HMAC com chave vazia).
+        if (! is_string($secret) || $secret === '') {
+            Log::error('Stripe webhook: STRIPE_WEBHOOK_SECRET não configurado — evento recusado.');
+            return response('Webhook not configured', 400);
+        }
 
         try {
-            $event = StripeWebhook::constructEvent(
-                $payload,
-                $sigHeader,
-                config('services.stripe.webhook_secret')
-            );
+            $event = StripeWebhook::constructEvent($payload, $sigHeader, $secret);
         } catch (SignatureVerificationException $e) {
             Log::warning('Stripe webhook: assinatura inválida');
             return response('Invalid signature', 400);
@@ -59,31 +63,34 @@ class WebhookController extends Controller
         $tenant = Tenant::find($tenantId);
         if (! $tenant) return;
 
-        // current_period_end será atualizado pelo invoice.paid que chega junto
-        Subscription::updateOrCreate(
-            ['tenant_id' => $tenantId, 'gateway' => 'stripe'],
-            [
-                'gateway_subscription_id' => $session->subscription,
-                'gateway_customer_id'     => $session->customer,
-                'status'                  => 'active',
-                'current_period_end'      => now()->addMonth(),
-            ]
-        );
+        $periodEnd = now()->addMonth();
 
-        // Cancela qualquer assinatura PIX ativa ou pendente — Stripe assumiu
-        Subscription::where('tenant_id', $tenantId)
-            ->where('gateway', 'mercadopago')
-            ->whereIn('status', ['active', 'pending'])
-            ->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($tenant, $tenantId, $session, $periodEnd) {
+            // current_period_end será atualizado pelo invoice.paid que chega junto
+            Subscription::updateOrCreate(
+                ['tenant_id' => $tenantId, 'gateway' => 'stripe'],
+                [
+                    'gateway_subscription_id' => $session->subscription,
+                    'gateway_customer_id'     => $session->customer,
+                    'status'                  => 'active',
+                    'current_period_end'      => $periodEnd,
+                ]
+            );
 
-        // Salva o customer ID no tenant para reutilizar em checkouts futuros
-        $tenant->update([
-            'plan_status'        => 'active',
-            'stripe_customer_id' => $session->customer,
-        ]);
+            // Cancela qualquer assinatura PIX ativa ou pendente — Stripe assumiu
+            Subscription::where('tenant_id', $tenantId)
+                ->where('gateway', 'mercadopago')
+                ->whereIn('status', ['active', 'pending'])
+                ->update(['status' => 'cancelled']);
 
-        Log::info("Tenant {$tenantId} ativado via Stripe checkout. Período até: " .
-            Carbon::createFromTimestamp($stripeSub->current_period_end)->toDateString());
+            // Salva o customer ID no tenant para reutilizar em checkouts futuros
+            $tenant->update([
+                'plan_status'        => 'active',
+                'stripe_customer_id' => $session->customer,
+            ]);
+        });
+
+        Log::info("Tenant {$tenantId} ativado via Stripe checkout. Período até: {$periodEnd->toDateString()}");
     }
 
     private function handleStripeInvoicePaid(object $invoice): void
@@ -96,21 +103,24 @@ class WebhookController extends Controller
         // Usa o period.end da linha da fatura — correto para qualquer intervalo (semanal, mensal, etc.)
         $periodEnd = Carbon::createFromTimestamp($invoice->lines->data[0]->period->end);
 
-        $sub->update([
-            'status'             => 'active',
-            'current_period_end' => $periodEnd,
-        ]);
-
         $tenant = $sub->tenant;
-        $tenant->update(['plan_status' => 'active']);
 
-        $this->recordAffiliateCommission(
-            tenant: $tenant,
-            paidAmount: $invoice->amount_paid / 100,
-            gateway: 'stripe',
-            gatewayPaymentId: $invoice->payment_intent ?? $invoice->id,
-            period: $periodEnd->format('Y-m'),
-        );
+        DB::transaction(function () use ($sub, $tenant, $periodEnd, $invoice) {
+            $sub->update([
+                'status'             => 'active',
+                'current_period_end' => $periodEnd,
+            ]);
+
+            $tenant->update(['plan_status' => 'active']);
+
+            $this->recordAffiliateCommission(
+                tenant: $tenant,
+                paidAmount: $invoice->amount_paid / 100,
+                gateway: 'stripe',
+                gatewayPaymentId: $invoice->payment_intent ?? $invoice->id,
+                period: $periodEnd->format('Y-m'),
+            );
+        });
 
         Log::info("Renovação Stripe confirmada para tenant {$sub->tenant_id}. Período até: {$periodEnd->toDateString()}");
     }
@@ -122,8 +132,10 @@ class WebhookController extends Controller
         $sub = Subscription::where('gateway_subscription_id', $invoice->subscription)->first();
         if (! $sub) return;
 
-        $sub->update(['status' => 'past_due']);
-        $sub->tenant->update(['plan_status' => 'suspended']);
+        DB::transaction(function () use ($sub) {
+            $sub->update(['status' => 'past_due']);
+            $sub->tenant->update(['plan_status' => 'suspended']);
+        });
 
         Log::warning("Pagamento Stripe falhou para tenant {$sub->tenant_id}.");
     }
@@ -153,19 +165,21 @@ class WebhookController extends Controller
         $cancelAtPeriodEnd = (! empty($stripeSub->cancel_at))
             || (bool) ($stripeSub->cancel_at_period_end ?? false);
 
-        $sub->update([
-            'status'               => $status,
-            'current_period_end'   => $periodEnd ? Carbon::createFromTimestamp($periodEnd) : $sub->current_period_end,
-            'cancel_at_period_end' => $cancelAtPeriodEnd,
-        ]);
-
         $tenantStatus = match ($status) {
             'active'    => 'active',
             'cancelled' => 'cancelled',
             default     => 'suspended',
         };
 
-        $sub->tenant->update(['plan_status' => $tenantStatus]);
+        DB::transaction(function () use ($sub, $status, $periodEnd, $cancelAtPeriodEnd, $tenantStatus) {
+            $sub->update([
+                'status'               => $status,
+                'current_period_end'   => $periodEnd ? Carbon::createFromTimestamp($periodEnd) : $sub->current_period_end,
+                'cancel_at_period_end' => $cancelAtPeriodEnd,
+            ]);
+
+            $sub->tenant->update(['plan_status' => $tenantStatus]);
+        });
 
         $cancelMsg = $cancelAtPeriodEnd ? ' (cancelamento agendado)' : '';
         Log::info("Stripe subscription updated para tenant {$sub->tenant_id}: {$status}{$cancelMsg}");
@@ -176,11 +190,13 @@ class WebhookController extends Controller
         $sub = Subscription::where('gateway_subscription_id', $stripeSub->id)->first();
         if (! $sub) return;
 
-        $sub->update(['status' => 'cancelled']);
-        $sub->tenant->update([
-            'plan_status'        => 'cancelled',
-            'stripe_customer_id' => null,
-        ]);
+        DB::transaction(function () use ($sub) {
+            $sub->update(['status' => 'cancelled']);
+            $sub->tenant->update([
+                'plan_status'        => 'cancelled',
+                'stripe_customer_id' => null,
+            ]);
+        });
 
         Log::info("Assinatura Stripe cancelada para tenant {$sub->tenant_id}.");
     }
@@ -194,6 +210,11 @@ class WebhookController extends Controller
         $xRequestId = $request->header('x-request-id');
         $dataId     = $request->query('data_id') ?? $request->input('data.id');
 
+        if (! is_string($dataId) && ! is_int($dataId)) {
+            return response('Missing data id', 400);
+        }
+        $dataId = (string) $dataId;
+
         if (! $this->validateMercadoPagoSignature($xSignature, $xRequestId, $dataId)) {
             Log::warning('Mercado Pago webhook: assinatura inválida');
             return response('Invalid signature', 400);
@@ -203,12 +224,18 @@ class WebhookController extends Controller
 
         Log::info('MP webhook type: ' . $type);
 
-        match ($type) {
-            'payment'                => $this->handleMpPayment($dataId),
-            'subscription_preapproval',
-            'updated'               => $this->handleMpSubscription($dataId),
-            default                 => null,
-        };
+        try {
+            match ($type) {
+                'payment'                => $this->handleMpPayment($dataId),
+                'subscription_preapproval',
+                'updated'               => $this->handleMpSubscription($dataId),
+                default                 => null,
+            };
+        } catch (\Throwable $e) {
+            // 5xx faz o Mercado Pago reenviar o evento; engolir o erro perderia o pagamento.
+            Log::error('Mercado Pago webhook falhou: ' . $e->getMessage(), ['type' => $type, 'data_id' => $dataId]);
+            return response('Processing error', 500);
+        }
 
         return response('OK', 200);
     }
@@ -218,53 +245,81 @@ class WebhookController extends Controller
         ?string $xRequestId,
         ?string $dataId
     ): bool {
-        if (! $xSignature) return false;
-
         $secret = config('services.mercadopago.webhook_secret');
-        $parts  = [];
+
+        // Sem segredo configurado qualquer um consegue assinar um evento (HMAC com chave vazia).
+        if (! $xSignature || ! is_string($secret) || $secret === '') return false;
+
+        $parts = [];
 
         foreach (explode(',', $xSignature) as $part) {
-            [$k, $v] = explode('=', trim($part), 2);
-            $parts[$k] = $v;
+            $kv = explode('=', trim($part), 2);
+            if (count($kv) !== 2) continue;
+            $parts[$kv[0]] = $kv[1];
         }
 
         $ts      = $parts['ts']  ?? '';
         $hash    = $parts['v1']  ?? '';
         $message = "id:{$dataId};request-id:{$xRequestId};ts:{$ts};";
 
-        return hash_equals(hash_hmac('sha256', $message, $secret), $hash);
+        return $hash !== '' && hash_equals(hash_hmac('sha256', $message, $secret), $hash);
+    }
+
+    /** Consulta o pagamento no Mercado Pago (extraído para poder ser substituído nos testes). */
+    protected function fetchMpPayment(string $id): object
+    {
+        MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+
+        return (new PaymentClient())->get((int) $id);
+    }
+
+    /** Consulta a assinatura (preapproval) no Mercado Pago. */
+    protected function fetchMpPreApproval(string $id): object
+    {
+        MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+
+        return (new \MercadoPago\Client\PreApproval\PreApprovalClient())->get($id);
     }
 
     private function handleMpPayment(string $paymentId): void
     {
-        try {
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+        $payment = $this->fetchMpPayment($paymentId);
 
-            $client  = new PaymentClient();
-            $payment = $client->get((int) $paymentId);
+        if ($payment->status !== 'approved') {
+            Log::info("MP payment {$paymentId} status: {$payment->status} — ignorado.");
+            return;
+        }
 
-            if ($payment->status !== 'approved') {
-                Log::info("MP payment {$paymentId} status: {$payment->status} — ignorado.");
-                return;
-            }
+        $tenantId = $payment->external_reference ?? null;
+        if (! $tenantId) return;
 
-            $tenantId = $payment->external_reference ?? null;
-            if (! $tenantId) return;
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) return;
 
-            $tenant = Tenant::find($tenantId);
-            if (! $tenant) return;
+        // Reentrega do mesmo pagamento: já processado, não estende o período nem duplica comissão
+        $alreadyProcessed = Subscription::where('tenant_id', $tenantId)
+            ->where('gateway', 'mercadopago')
+            ->where('gateway_subscription_id', $paymentId)
+            ->where('status', 'active')
+            ->exists();
 
-            // Se já tem Stripe ativo, ignora o PIX (pode ser QR antigo pago por engano)
-            $hasActiveStripe = Subscription::where('tenant_id', $tenantId)
-                ->where('gateway', 'stripe')
-                ->where('status', 'active')
-                ->exists();
+        if ($alreadyProcessed) {
+            Log::info("MP payment {$paymentId}: já processado — ignorando reentrega.");
+            return;
+        }
 
-            if ($hasActiveStripe) {
-                Log::info("MP payment {$paymentId}: tenant {$tenantId} já tem Stripe ativo — ignorando PIX.");
-                return;
-            }
+        // Se já tem Stripe ativo, ignora o PIX (pode ser QR antigo pago por engano)
+        $hasActiveStripe = Subscription::where('tenant_id', $tenantId)
+            ->where('gateway', 'stripe')
+            ->where('status', 'active')
+            ->exists();
 
+        if ($hasActiveStripe) {
+            Log::info("MP payment {$paymentId}: tenant {$tenantId} já tem Stripe ativo — ignorando PIX.");
+            return;
+        }
+
+        DB::transaction(function () use ($tenant, $tenantId, $paymentId, $payment) {
             Subscription::updateOrCreate(
                 ['tenant_id' => $tenantId, 'gateway' => 'mercadopago'],
                 [
@@ -283,12 +338,9 @@ class WebhookController extends Controller
                 gatewayPaymentId: $paymentId,
                 period: now()->format('Y-m'),
             );
+        });
 
-            Log::info("PIX aprovado — tenant {$tenantId} ativo até " . now()->addMonth()->toDateString());
-
-        } catch (\Exception $e) {
-            Log::error('MP payment webhook error: ' . $e->getMessage());
-        }
+        Log::info("PIX aprovado — tenant {$tenantId} ativo até " . now()->addMonth()->toDateString());
     }
 
     private function recordAffiliateCommission(
@@ -308,18 +360,25 @@ class WebhookController extends Controller
         $discountAmount  = $discountApplied ? round($planPrice - $paidAmount, 2) : 0.00;
         $commissionAmount = round($paidAmount * ($affiliate->commission_pct / 100), 2);
 
-        AffiliateCommission::create([
-            'affiliate_id'        => $affiliate->id,
-            'tenant_id'           => $tenant->id,
-            'subscription_amount' => $planPrice,
-            'discount_amount'     => $discountAmount,
-            'charged_amount'      => $paidAmount,
-            'commission_amount'   => $commissionAmount,
-            'gateway'             => $gateway,
-            'gateway_payment_id'  => $gatewayPaymentId,
-            'period'              => $period,
-            'status'              => 'pending',
-        ]);
+        // Idempotente: o gateway pode reenviar o mesmo evento
+        $commission = AffiliateCommission::firstOrCreate(
+            ['gateway' => $gateway, 'gateway_payment_id' => $gatewayPaymentId],
+            [
+                'affiliate_id'        => $affiliate->id,
+                'tenant_id'           => $tenant->id,
+                'subscription_amount' => $planPrice,
+                'discount_amount'     => $discountAmount,
+                'charged_amount'      => $paidAmount,
+                'commission_amount'   => $commissionAmount,
+                'period'              => $period,
+                'status'              => 'pending',
+            ]
+        );
+
+        if (! $commission->wasRecentlyCreated) {
+            Log::info("Comissão do pagamento {$gatewayPaymentId} já registrada — ignorando reentrega.");
+            return;
+        }
 
         if ($discountApplied && $tenant->affiliate_discount_months_remaining > 0) {
             $tenant->decrement('affiliate_discount_months_remaining');
@@ -330,27 +389,27 @@ class WebhookController extends Controller
 
     private function handleMpSubscription(string $preApprovalId): void
     {
-        try {
-            MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
+        $preApproval = $this->fetchMpPreApproval($preApprovalId);
 
-            $client      = new \MercadoPago\Client\PreApproval\PreApprovalClient();
-            $preApproval = $client->get($preApprovalId);
+        $tenantId = $preApproval->external_reference ?? null;
+        if (! $tenantId) return;
 
-            $tenantId = $preApproval->external_reference ?? null;
-            if (! $tenantId) return;
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) return;
 
-            $tenant = Tenant::find($tenantId);
-            if (! $tenant) return;
+        $mpStatus = $preApproval->status;
 
-            $mpStatus = $preApproval->status;
+        $internalStatus = match ($mpStatus) {
+            'authorized' => 'active',
+            'paused'     => 'past_due',
+            'cancelled'  => 'cancelled',
+            default      => 'trialing',
+        };
 
-            $internalStatus = match ($mpStatus) {
-                'authorized' => 'active',
-                'paused'     => 'past_due',
-                'cancelled'  => 'cancelled',
-                default      => 'trialing',
-            };
+        $tenantPlanStatus = $mpStatus === 'authorized' ? 'active' :
+                            ($mpStatus === 'cancelled' ? 'cancelled' : 'suspended');
 
+        DB::transaction(function () use ($tenant, $tenantId, $preApprovalId, $internalStatus, $tenantPlanStatus) {
             Subscription::updateOrCreate(
                 ['tenant_id' => $tenantId, 'gateway' => 'mercadopago'],
                 [
@@ -360,15 +419,9 @@ class WebhookController extends Controller
                 ]
             );
 
-            $tenantPlanStatus = $mpStatus === 'authorized' ? 'active' :
-                                ($mpStatus === 'cancelled' ? 'cancelled' : 'suspended');
-
             $tenant->update(['plan_status' => $tenantPlanStatus]);
+        });
 
-            Log::info("MP preapproval {$preApprovalId}: {$mpStatus} → tenant {$tenantId} → {$tenantPlanStatus}");
-
-        } catch (\Exception $e) {
-            Log::error('Erro ao processar MP webhook: ' . $e->getMessage());
-        }
+        Log::info("MP preapproval {$preApprovalId}: {$mpStatus} → tenant {$tenantId} → {$tenantPlanStatus}");
     }
 }
