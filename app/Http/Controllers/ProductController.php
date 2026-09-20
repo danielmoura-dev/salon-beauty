@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\TenantExists;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class ProductController extends Controller
         $data = $request->validate([
             'name'            => ['required', 'string', 'max:150'],
             'brand'           => ['nullable', 'string', 'max:100'],
-            'category_id'     => ['nullable', 'uuid', 'exists:categories,id'],
+            'category_id'     => ['nullable', 'uuid', new TenantExists('categories')],
             'for_sale'        => ['boolean'],
             'price'           => ['nullable', 'numeric', 'min:0'],
             'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -54,7 +55,7 @@ class ProductController extends Controller
         $data = $request->validate([
             'name'            => ['required', 'string', 'max:150'],
             'brand'           => ['nullable', 'string', 'max:100'],
-            'category_id'     => ['nullable', 'uuid', 'exists:categories,id'],
+            'category_id'     => ['nullable', 'uuid', new TenantExists('categories')],
             'for_sale'        => ['boolean'],
             'price'           => ['nullable', 'numeric', 'min:0'],
             'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],

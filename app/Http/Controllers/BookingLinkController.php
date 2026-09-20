@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\TenantExists;
 use App\Models\Appointment;
 use App\Models\Professional;
 use App\Models\Service;
@@ -103,7 +104,7 @@ class BookingLinkController extends Controller
     {
         $data = $request->validate([
             'service_ids'   => ['array'],
-            'service_ids.*' => ['uuid', 'exists:services,id'],
+            'service_ids.*' => ['uuid', new TenantExists('services')],
         ]);
 
         $current  = $professional->services()->get()->keyBy('id');

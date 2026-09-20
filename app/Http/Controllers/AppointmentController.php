@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\TenantExists;
 use App\Models\Appointment;
 use App\Models\Category;
 use App\Models\Client;
@@ -68,11 +69,11 @@ class AppointmentController extends Controller
         ]);
 
         $data = $request->validate([
-            'client_id'       => ['required', 'uuid', 'exists:clients,id'],
-            'professional_id' => ['required', 'uuid', 'exists:professionals,id'],
-            'service_id'      => ['nullable', 'uuid', 'exists:services,id'],
+            'client_id'       => ['required', 'uuid', new TenantExists('clients')],
+            'professional_id' => ['required', 'uuid', new TenantExists('professionals')],
+            'service_id'      => ['nullable', 'uuid', new TenantExists('services')],
             'service_ids'     => ['nullable', 'array'],
-            'service_ids.*'   => ['uuid', 'exists:services,id'],
+            'service_ids.*'   => ['uuid', new TenantExists('services')],
             'date'            => ['required', 'date'],
             'start_time'      => ['required', 'date_format:H:i'],
             'end_time'        => ['required', 'date_format:H:i', 'after:start_time'],
@@ -140,9 +141,9 @@ class AppointmentController extends Controller
         }
 
         $data = $request->validate([
-            'client_id'       => ['sometimes', 'uuid', 'exists:clients,id'],
-            'professional_id' => ['sometimes', 'uuid', 'exists:professionals,id'],
-            'service_id'      => ['sometimes', 'uuid', 'exists:services,id'],
+            'client_id'       => ['sometimes', 'uuid', new TenantExists('clients')],
+            'professional_id' => ['sometimes', 'uuid', new TenantExists('professionals')],
+            'service_id'      => ['sometimes', 'uuid', new TenantExists('services')],
             'date'            => ['sometimes', 'date'],
             'start_time'      => ['sometimes', 'date_format:H:i'],
             'end_time'        => ['sometimes', 'date_format:H:i'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\TenantExists;
 use App\Models\Category;
 use App\Models\Expense;
 use Carbon\Carbon;
@@ -38,7 +39,7 @@ class ExpenseController extends Controller
         $data = $request->validate([
             'description'   => ['required', 'string', 'max:200'],
             'amount'        => ['required', 'numeric', 'min:0.01'],
-            'category_id'   => ['nullable', 'uuid', 'exists:categories,id'],
+            'category_id'   => ['nullable', 'uuid', new TenantExists('categories')],
             'payment_type'  => ['required', 'in:one_time,installment,recurring'],
             'installments'  => ['nullable', 'integer', 'min:2', 'max:60'],
             'months'        => ['nullable', 'integer', 'min:2', 'max:120'],
@@ -66,7 +67,7 @@ class ExpenseController extends Controller
         $data = $request->validate([
             'description'  => ['required', 'string', 'max:200'],
             'amount'       => ['required', 'numeric', 'min:0.01'],
-            'category_id'  => ['nullable', 'uuid', 'exists:categories,id'],
+            'category_id'  => ['nullable', 'uuid', new TenantExists('categories')],
             'due_date'     => ['required', 'date'],
             'is_paid'      => ['boolean'],
             'notes'        => ['nullable', 'string'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\TenantExists;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Professional;
@@ -78,7 +79,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'client_id' => ['required', 'uuid', 'exists:clients,id'],
+            'client_id' => ['required', 'uuid', new TenantExists('clients')],
             'notes'     => ['nullable', 'string'],
         ]);
 
@@ -138,8 +139,8 @@ class OrderController extends Controller
             'description'     => ['required', 'string', 'max:200'],
             'qty'             => ['required', 'integer', 'min:1'],
             'unit_price'      => ['required', 'numeric', 'min:0'],
-            'product_id'      => ['nullable', 'uuid', 'exists:products,id'],
-            'professional_id' => ['nullable', 'uuid', 'exists:professionals,id'],
+            'product_id'      => ['nullable', 'uuid', new TenantExists('products')],
+            'professional_id' => ['nullable', 'uuid', new TenantExists('professionals')],
             'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
             'has_commission'  => ['boolean'],
         ]);
@@ -172,8 +173,8 @@ class OrderController extends Controller
             'description'     => ['required', 'string', 'max:200'],
             'qty'             => ['required', 'integer', 'min:1'],
             'unit_price'      => ['required', 'numeric', 'min:0'],
-            'product_id'      => ['nullable', 'uuid', 'exists:products,id'],
-            'professional_id' => ['nullable', 'uuid', 'exists:professionals,id'],
+            'product_id'      => ['nullable', 'uuid', new TenantExists('products')],
+            'professional_id' => ['nullable', 'uuid', new TenantExists('professionals')],
             'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
             'has_commission'  => ['boolean'],
         ]);
