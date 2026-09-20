@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class BookingAuthController extends Controller
 {
@@ -20,10 +21,13 @@ class BookingAuthController extends Controller
         $client = $this->findClient($tenant, $phone);
 
         if ($client) {
+            session()->regenerate();
             session()->put("booking_client.{$tenant->id}", $client->id);
+
+            // Só o primeiro nome: quem digita um número de terceiro não deve descobrir o nome completo
             return response()->json([
                 'exists' => true,
-                'name'   => $client->name,
+                'name'   => Str::of($client->name)->trim()->before(' ')->toString(),
             ]);
         }
 

@@ -10,10 +10,15 @@ use App\Models\Service;
 use App\Models\Tenant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
+    /** Até quantos dias no futuro a página pública aceita reservas. */
+    private const MAX_DAYS_AHEAD = 180;
+
     // Página pública do salão: lista serviços por categoria
     public function show(string $slug)
     {
@@ -44,7 +49,7 @@ class BookingController extends Controller
         $tenant = $this->resolveTenant($slug);
 
         $data = $request->validate([
-            'service_ids'   => ['required', 'array', 'min:1'],
+            'service_ids'   => ['required', 'array', 'min:1', 'max:10'],
             'service_ids.*' => ['uuid'],
         ]);
 
@@ -77,69 +82,24 @@ class BookingController extends Controller
         $tenant = $this->resolveTenant($slug);
 
         $data = $request->validate([
-            'service_ids'     => ['required', 'array', 'min:1'],
+            'service_ids'     => ['required', 'array', 'min:1', 'max:10'],
             'service_ids.*'   => ['uuid'],
             'professional_id' => ['required', 'uuid'],
             'date'            => ['required', 'date'],
         ]);
 
-        $professional = Professional::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('show_on_booking', true)
-            ->findOrFail($data['professional_id']);
+        $professional = $this->bookableProfessional($tenant, $data['professional_id']);
+        $services     = $this->bookableServices($tenant, $professional, $data['service_ids']);
 
-        $duration = (int) Service::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->whereIn('id', $data['service_ids'])
-            ->sum('duration_min');
-
-        if ($duration === 0) {
+        if (! $services) {
             return response()->json(['slots' => []]);
         }
 
         $date = Carbon::parse($data['date'])->startOfDay();
-        $step = (int) ($tenant->booking_interval_min ?? 30);
 
-        // Limites do dia (work_schedule do profissional ou agenda do tenant)
-        [$startHour, $startMin, $endHour, $endMin] = $this->dayBounds($tenant, $professional, $date);
-
-        if ($startHour === null) {
-            return response()->json(['slots' => []]);
-        }
-
-        $dayStart = $date->copy()->setTime($startHour, $startMin);
-        $dayEnd   = $date->copy()->setTime($endHour, $endMin);
-        $now      = now();
-
-        $existing = Appointment::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('professional_id', $professional->id)
-            ->whereDate('date', $date->toDateString())
-            ->where('status', '!=', 'cancelled')
-            ->get(['start_time', 'end_time']);
-
-        $slots = [];
-        $cursor = $dayStart->copy();
-        while ($cursor->copy()->addMinutes($duration)->lte($dayEnd)) {
-            $slotStart = $cursor->copy();
-            $slotEnd   = $cursor->copy()->addMinutes($duration);
-
-            $isPast = $slotStart->lte($now);
-
-            $hasConflict = $existing->contains(function ($apt) use ($slotStart, $slotEnd, $date, $step) {
-                $aStart = $date->copy()->setTimeFromTimeString(substr($apt->start_time, 0, 5));
-                $aEnd   = $date->copy()->setTimeFromTimeString(substr($apt->end_time, 0, 5))->addMinutes($step);
-                return $slotStart->lt($aEnd) && $slotEnd->gt($aStart);
-            });
-
-            if (! $isPast && ! $hasConflict) {
-                $slots[] = $slotStart->format('H:i');
-            }
-
-            $cursor->addMinutes($step);
-        }
-
-        return response()->json(['slots' => $slots]);
+        return response()->json([
+            'slots' => $this->availableSlots($tenant, $professional, (int) $services->sum('duration_min'), $date),
+        ]);
     }
 
     // Cria os agendamentos (um por serviço, encadeados)
@@ -153,73 +113,69 @@ class BookingController extends Controller
         }
 
         $data = $request->validate([
-            'service_ids'     => ['required', 'array', 'min:1'],
+            'service_ids'     => ['required', 'array', 'min:1', 'max:10'],
             'service_ids.*'   => ['uuid'],
             'professional_id' => ['required', 'uuid'],
-            'date'            => ['required', 'date', 'after_or_equal:today'],
+            'date'            => [
+                'required', 'date', 'after_or_equal:today',
+                'before_or_equal:' . now()->addDays(self::MAX_DAYS_AHEAD)->toDateString(),
+            ],
             'start_time'      => ['required', 'date_format:H:i'],
         ]);
 
-        $professional = Professional::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('show_on_booking', true)
-            ->findOrFail($data['professional_id']);
+        $professional = $this->bookableProfessional($tenant, $data['professional_id']);
+        $services     = $this->bookableServices($tenant, $professional, $data['service_ids']);
 
-        // Load services preserving the client's selected order
-        $servicesById = Service::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->whereIn('id', $data['service_ids'])
-            ->get()
-            ->keyBy('id');
-
-        $services = collect($data['service_ids'])
-            ->map(fn ($id) => $servicesById->get($id))
-            ->filter()
-            ->values();
+        if (! $services) {
+            return response()->json(['error' => 'Um dos serviços escolhidos não está disponível para este profissional.'], 422);
+        }
 
         $totalDuration = (int) $services->sum('duration_min');
         $start         = Carbon::parse($data['date'] . ' ' . $data['start_time']);
-        $end           = $start->copy()->addMinutes($totalDuration);
 
-        // Validate that the full block is conflict-free
-        $conflict = Appointment::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('professional_id', $professional->id)
-            ->whereDate('date', $start->toDateString())
-            ->where('status', '!=', 'cancelled')
-            ->where(function ($q) use ($start, $end) {
-                $q->whereRaw('? < end_time AND ? > start_time', [$start->format('H:i'), $end->format('H:i')]);
-            })
-            ->exists();
+        $created = DB::transaction(function () use ($tenant, $client, $professional, $services, $totalDuration, $start) {
+            // Trava a linha do profissional: reservas simultâneas para ele passam uma de cada vez,
+            // então a checagem de conflito abaixo enxerga a reserva que acabou de ser feita.
+            Professional::withoutGlobalScopes()->whereKey($professional->id)->lockForUpdate()->first();
 
-        if ($conflict) {
-            return response()->json(['error' => 'Esse horário acabou de ser ocupado. Escolha outro.'], 422);
-        }
+            // Mesma regra que a tela usa para listar horários: expediente, grade, passado e conflitos
+            $slots = $this->availableSlots($tenant, $professional, $totalDuration, $start->copy()->startOfDay());
 
-        $groupId = (string) Str::uuid();
-        $cursor  = $start->copy();
-        $created = [];
+            if (! in_array($start->format('H:i'), $slots, true)) {
+                return null;
+            }
 
-        foreach ($services as $service) {
-            $aptEnd = $cursor->copy()->addMinutes((int) $service->duration_min);
+            $groupId = (string) Str::uuid();
+            $cursor  = $start->copy();
+            $ids     = [];
 
-            $appointment = Appointment::create([
-                'tenant_id'           => $tenant->id,
-                'client_id'           => $client->id,
-                'professional_id'     => $professional->id,
-                'service_id'          => $service->id,
-                'date'                => $cursor->toDateString(),
-                'start_time'          => $cursor->format('H:i'),
-                'end_time'            => $aptEnd->format('H:i'),
-                'status'              => 'scheduled',
-                'source'              => 'public_link',
-                'recurrence'          => 'none',
-                'recurrence_group_id' => $groupId,
-                'create_order'        => false,
-            ]);
+            foreach ($services as $service) {
+                $aptEnd = $cursor->copy()->addMinutes((int) $service->duration_min);
 
-            $created[] = $appointment->id;
-            $cursor    = $aptEnd;
+                $appointment = Appointment::create([
+                    'tenant_id'           => $tenant->id,
+                    'client_id'           => $client->id,
+                    'professional_id'     => $professional->id,
+                    'service_id'          => $service->id,
+                    'date'                => $cursor->toDateString(),
+                    'start_time'          => $cursor->format('H:i'),
+                    'end_time'            => $aptEnd->format('H:i'),
+                    'status'              => 'scheduled',
+                    'source'              => 'public_link',
+                    'recurrence'          => 'none',
+                    'recurrence_group_id' => $groupId,
+                    'create_order'        => false,
+                ]);
+
+                $ids[] = $appointment->id;
+                $cursor = $aptEnd;
+            }
+
+            return $ids;
+        });
+
+        if ($created === null) {
+            return response()->json(['error' => 'Esse horário não está mais disponível. Escolha outro.'], 422);
         }
 
         return response()->json([
@@ -288,6 +244,90 @@ class BookingController extends Controller
         return Client::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->find($clientId);
+    }
+
+    /** Profissional visível na página pública deste salão (404 caso contrário). */
+    protected function bookableProfessional(Tenant $tenant, string $id): Professional
+    {
+        return Professional::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('show_on_booking', true)
+            ->findOrFail($id);
+    }
+
+    /**
+     * Serviços ativos do salão que o profissional executa, na ordem escolhida pelo cliente.
+     * Retorna null se algum id for repetido, de outro salão, inativo ou não executado pelo profissional.
+     */
+    protected function bookableServices(Tenant $tenant, Professional $professional, array $ids): ?Collection
+    {
+        if (count($ids) !== count(array_unique($ids))) {
+            return null;
+        }
+
+        $found = Service::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('active', true)
+            ->whereIn('id', $ids)
+            ->whereHas('professionals', fn ($q) => $q->where('professionals.id', $professional->id))
+            ->get()
+            ->keyBy('id');
+
+        if ($found->count() !== count($ids)) {
+            return null;
+        }
+
+        return collect($ids)->map(fn ($id) => $found->get($id))->values();
+    }
+
+    /** Horários (H:i) em que um bloco de $duration minutos cabe na agenda do profissional no dia. */
+    protected function availableSlots(Tenant $tenant, Professional $professional, int $duration, Carbon $date): array
+    {
+        if ($duration <= 0) {
+            return [];
+        }
+
+        $step = (int) ($tenant->booking_interval_min ?? 30);
+
+        // Limites do dia (work_schedule do profissional ou agenda do tenant)
+        [$startHour, $startMin, $endHour, $endMin] = $this->dayBounds($tenant, $professional, $date);
+
+        if ($startHour === null) {
+            return [];
+        }
+
+        $dayStart = $date->copy()->setTime($startHour, $startMin);
+        $dayEnd   = $date->copy()->setTime($endHour, $endMin);
+        $now      = now();
+
+        $existing = Appointment::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('professional_id', $professional->id)
+            ->whereDate('date', $date->toDateString())
+            ->where('status', '!=', 'cancelled')
+            ->get(['start_time', 'end_time']);
+
+        $slots  = [];
+        $cursor = $dayStart->copy();
+
+        while ($cursor->copy()->addMinutes($duration)->lte($dayEnd)) {
+            $slotStart = $cursor->copy();
+            $slotEnd   = $cursor->copy()->addMinutes($duration);
+
+            $hasConflict = $existing->contains(function ($apt) use ($slotStart, $slotEnd, $date, $step) {
+                $aStart = $date->copy()->setTimeFromTimeString(substr($apt->start_time, 0, 5));
+                $aEnd   = $date->copy()->setTimeFromTimeString(substr($apt->end_time, 0, 5))->addMinutes($step);
+                return $slotStart->lt($aEnd) && $slotEnd->gt($aStart);
+            });
+
+            if ($slotStart->gt($now) && ! $hasConflict) {
+                $slots[] = $slotStart->format('H:i');
+            }
+
+            $cursor->addMinutes($step);
+        }
+
+        return $slots;
     }
 
     protected function dayBounds(Tenant $tenant, Professional $professional, Carbon $date): array
