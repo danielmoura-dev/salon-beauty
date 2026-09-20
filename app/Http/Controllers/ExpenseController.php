@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Expense;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ExpenseController extends Controller
@@ -51,13 +52,15 @@ class ExpenseController extends Controller
         $data['is_paid'] = $request->boolean('is_paid');
         $data['paid_at'] = $data['is_paid'] ? now() : null;
 
-        if ($data['payment_type'] === 'installment' && ($data['installments'] ?? 0) > 1) {
-            $this->createInstallments($data);
-        } elseif ($data['payment_type'] === 'recurring') {
-            $this->createRecurring($data, (int) ($request->input('months', 12)));
-        } else {
-            Expense::create($data);
-        }
+        DB::transaction(function () use ($data, $request) {
+            if ($data['payment_type'] === 'installment' && ($data['installments'] ?? 0) > 1) {
+                $this->createInstallments($data);
+            } elseif ($data['payment_type'] === 'recurring') {
+                $this->createRecurring($data, (int) ($request->input('months', 12)));
+            } else {
+                Expense::create($data);
+            }
+        });
 
         return back()->with('success', 'Despesa lançada!');
     }

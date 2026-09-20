@@ -43,7 +43,7 @@ class Order extends Model
 
     public function recalcTotal(): void
     {
-        $this->total = $this->items->sum(fn($i) => $i->subtotal());
+        $this->total = $this->items()->get()->sum(fn($i) => $i->subtotal());
         $this->save();
     }
 

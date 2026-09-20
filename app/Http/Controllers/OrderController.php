@@ -8,11 +8,14 @@ use App\Models\OrderItem;
 use App\Models\Professional;
 use App\Models\Service;
 use App\Models\Product;
+use App\Services\OrderService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    public function __construct(private OrderService $orders) {}
+
     public function index(Request $request)
     {
         $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
@@ -134,33 +137,9 @@ class OrderController extends Controller
     // Adicionar item à comanda
     public function addItem(Request $request, Order $order)
     {
-        $data = $request->validate([
-            'type'            => ['required', 'in:service,product,other'],
-            'description'     => ['required', 'string', 'max:200'],
-            'qty'             => ['required', 'integer', 'min:1'],
-            'unit_price'      => ['required', 'numeric', 'min:0'],
-            'product_id'      => ['nullable', 'uuid', new TenantExists('products')],
-            'professional_id' => ['nullable', 'uuid', new TenantExists('professionals')],
-            'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'has_commission'  => ['boolean'],
-        ]);
-
-        $data['has_commission'] = $request->boolean('has_commission', true);
-
-        $order->items()->create($data);
-
-        // Deduct stock if product tracks it
-        if (!empty($data['product_id'])) {
-            $product = Product::find($data['product_id']);
-            if ($product && $product->track_stock && $product->stock_qty !== null) {
-                $product->decrement('stock_qty', $data['qty']);
-            }
-        }
-
-        $order->recalcTotal();
+        $order = $this->orders->addItem($order, $this->validatedItem($request));
 
         if ($request->expectsJson()) {
-            $order->load(['client', 'items.professional', 'payments', 'appointment']);
             return response()->json($order);
         }
         return back()->with('success', 'Item adicionado!');
@@ -168,57 +147,16 @@ class OrderController extends Controller
 
     public function updateItem(Request $request, Order $order, OrderItem $item)
     {
-        $data = $request->validate([
-            'type'            => ['required', 'in:service,product,other'],
-            'description'     => ['required', 'string', 'max:200'],
-            'qty'             => ['required', 'integer', 'min:1'],
-            'unit_price'      => ['required', 'numeric', 'min:0'],
-            'product_id'      => ['nullable', 'uuid', new TenantExists('products')],
-            'professional_id' => ['nullable', 'uuid', new TenantExists('professionals')],
-            'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'has_commission'  => ['boolean'],
-        ]);
+        $order = $this->orders->updateItem($order, $item, $this->validatedItem($request));
 
-        $data['has_commission'] = $request->boolean('has_commission', true);
-
-        // Ajusta estoque se mudou qty ou produto
-        if ($item->product_id) {
-            $product = Product::find($item->product_id);
-            if ($product && $product->track_stock && $product->stock_qty !== null) {
-                $product->increment('stock_qty', $item->qty); // devolve qty antiga
-            }
-        }
-
-        $item->update($data);
-
-        if (!empty($data['product_id'])) {
-            $product = Product::find($data['product_id']);
-            if ($product && $product->track_stock && $product->stock_qty !== null) {
-                $product->decrement('stock_qty', $data['qty']); // desconta qty nova
-            }
-        }
-
-        $order->recalcTotal();
-
-        $order->load(['client', 'items.professional', 'payments', 'appointment']);
         return response()->json($order);
     }
 
     public function removeItem(Request $request, Order $order, OrderItem $item)
     {
-        // Restore stock if item linked to a tracked product
-        if ($item->product_id) {
-            $product = Product::find($item->product_id);
-            if ($product && $product->track_stock && $product->stock_qty !== null) {
-                $product->increment('stock_qty', $item->qty);
-            }
-        }
-
-        $item->delete();
-        $order->recalcTotal();
+        $order = $this->orders->removeItem($order, $item);
 
         if ($request->expectsJson()) {
-            $order->load(['client', 'items.professional', 'payments', 'appointment']);
             return response()->json($order);
         }
         return back()->with('success', 'Item removido.');
@@ -243,19 +181,9 @@ class OrderController extends Controller
             ? round((float) $data['amount'] - (float) $data['amount'] / (1 + $feePct / 100), 2)
             : 0;
 
-        $order->payments()->create($data);
-
-        // Ajusta saldo do cliente para fiado ou crédito
-        $this->applyClientBalance($order, $data['method'], (float) $data['amount']);
-
-        // Verifica se comanda está totalmente paga
-        $order->load('payments');
-        if ($order->isPaid()) {
-            $order->update(['status' => 'closed']);
-        }
+        $order = $this->orders->addPayment($order, $data);
 
         if ($request->expectsJson()) {
-            $order->load(['client', 'items.professional', 'payments', 'appointment']);
             return response()->json($order);
         }
         return back()->with('success', 'Pagamento registrado!');
@@ -263,14 +191,9 @@ class OrderController extends Controller
 
     public function close(Request $request, Order $order)
     {
-        $order->update(['status' => 'closed']);
-
-        if ($order->appointment) {
-            $order->appointment->update(['status' => 'completed']);
-        }
+        $order = $this->orders->close($order);
 
         if ($request->expectsJson()) {
-            $order->load(['client', 'items.professional', 'payments', 'appointment']);
             return response()->json($order);
         }
         return back()->with('success', 'Comanda fechada!');
@@ -278,10 +201,9 @@ class OrderController extends Controller
 
     public function reopen(Request $request, Order $order)
     {
-        $order->update(['status' => 'open']);
+        $order = $this->orders->reopen($order);
 
         if ($request->expectsJson()) {
-            $order->load(['client', 'items.professional', 'payments', 'appointment']);
             return response()->json($order);
         }
         return back()->with('success', 'Comanda reaberta.');
@@ -289,18 +211,7 @@ class OrderController extends Controller
 
     public function cancel(Request $request, Order $order)
     {
-        // Restore stock for any tracked product items
-        $order->load('items');
-        foreach ($order->items as $item) {
-            if ($item->product_id) {
-                $product = Product::find($item->product_id);
-                if ($product && $product->track_stock && $product->stock_qty !== null) {
-                    $product->increment('stock_qty', $item->qty);
-                }
-            }
-        }
-
-        $order->delete();
+        $this->orders->delete($order);
 
         if ($request->expectsJson()) {
             return response()->json(['deleted' => true]);
@@ -310,56 +221,24 @@ class OrderController extends Controller
 
     public function clearPayments(Request $request, Order $order)
     {
-        $order->load('payments', 'items', 'client');
-
-        $payments  = $order->payments;
-        $client    = $order->client;
-        // Usa valor efetivo (sem taxa da maquininha) para todos os cálculos de saldo
-        $sumDebt   = (float) $payments->where('method', 'debt')->sum(fn($p) => $p->effectiveAmount());
-        $sumCredit = (float) $payments->where('method', 'credit')->sum(fn($p) => $p->effectiveAmount());
-        $totalPaid = (float) $payments->sum(fn($p) => $p->effectiveAmount());
-        $total     = (float) $order->total;
-
-        // Efeito líquido no saldo do cliente:
-        // debt e credit cada um decrementaram balance pelo seu valor efetivo;
-        // outros métodos: se totalPaid > total, o excesso foi adicionado como crédito.
-        // Reverter = sum_debt + sum_credit - max(0, totalPaid - total)
-        $excess    = max(0.0, round($totalPaid - $total, 2));
-        $reversal  = round($sumDebt + $sumCredit - $excess, 2);
-
-        if (abs($reversal) > 0.001) {
-            $client->balance = round((float) $client->balance + $reversal, 2);
-            $client->save();
-        }
-
-        $order->payments()->delete();
-        $order->update(['status' => 'open']);
-
-        $order->load(['client', 'items.professional', 'payments', 'appointment']);
-        return response()->json($order);
+        return response()->json($this->orders->clearPayments($order));
     }
 
-    private function applyClientBalance(Order $order, string $method, float $amount): void
+    private function validatedItem(Request $request): array
     {
-        $client = $order->client;
+        $data = $request->validate([
+            'type'            => ['required', 'in:service,product,other'],
+            'description'     => ['required', 'string', 'max:200'],
+            'qty'             => ['required', 'integer', 'min:1'],
+            'unit_price'      => ['required', 'numeric', 'min:0'],
+            'product_id'      => ['nullable', 'uuid', new TenantExists('products')],
+            'professional_id' => ['nullable', 'uuid', new TenantExists('professionals')],
+            'commission_pct'  => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'has_commission'  => ['boolean'],
+        ]);
 
-        if ($method === 'debt') {
-            // Fiado: subtrai do saldo (fica negativo = dívida)
-            $client->decrement('balance', $amount);
-            return;
-        }
+        $data['has_commission'] = $request->boolean('has_commission', true);
 
-        if ($method === 'credit') {
-            // Usa crédito existente do cliente
-            $client->decrement('balance', $amount);
-            return;
-        }
-
-        // Troco/excesso (excluindo taxa da maquininha) vira crédito
-        $order->load('payments', 'items');
-        $balance = $order->balance(); // já usa effectiveAmount()
-        if ($balance > 0) {
-            $client->increment('balance', $balance);
-        }
+        return $data;
     }
 }

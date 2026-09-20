@@ -8,6 +8,7 @@ use App\Models\Professional;
 use App\Models\ProfessionalVoucher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class CommissionController extends Controller
 {
@@ -121,60 +122,81 @@ class CommissionController extends Controller
             ? Carbon::parse($data['date_from'])->toDateString()
             : null;
 
-        $items = OrderItem::whereIn('id', $data['item_ids'] ?? [])
-            ->where('professional_id', $professional->id)
-            ->whereNull('commission_paid_at')
-            ->get();
+        $payment = DB::transaction(function () use ($data, $professional, $periodStart) {
+            // Trava os itens/vales: um clique duplo não pode pagar a mesma comissão duas vezes
+            // e só entram itens elegíveis (mesmo critério da tela: comanda fechada, com comissão).
+            $items = OrderItem::whereIn('id', $data['item_ids'] ?? [])
+                ->where('professional_id', $professional->id)
+                ->where('has_commission', true)
+                ->whereNull('commission_paid_at')
+                ->whereHas('order', fn($q) => $q->where('status', 'closed'))
+                ->lockForUpdate()
+                ->get();
 
-        $vouchers = ProfessionalVoucher::whereIn('id', $data['voucher_ids'] ?? [])
-            ->where('professional_id', $professional->id)
-            ->whereNull('commission_payment_id')
-            ->get();
+            $vouchers = ProfessionalVoucher::whereIn('id', $data['voucher_ids'] ?? [])
+                ->where('professional_id', $professional->id)
+                ->whereNull('commission_payment_id')
+                ->lockForUpdate()
+                ->get();
 
-        $totalServices = $items->where('type', 'service')->sum(fn($i) => $i->commissionValue());
-        $totalProducts = $items->where('type', 'product')->sum(fn($i) => $i->commissionValue());
-        $totalOthers   = $items->where('type', 'other')->sum(fn($i) => $i->commissionValue());
-        $totalVouchers = $vouchers->sum('amount');
-        $netAmount     = max(0, $totalServices + $totalProducts + $totalOthers - $totalVouchers);
+            if ($items->isEmpty() && $vouchers->isEmpty()) {
+                return null;
+            }
 
-        $payment = CommissionPayment::create([
-            'tenant_id'       => auth()->user()->tenant_id,
-            'professional_id' => $professional->id,
-            'period_start'    => $periodStart,
-            'period_end'      => $data['date_to'],
-            'total_services'  => $totalServices,
-            'total_products'  => $totalProducts,
-            'total_others'    => $totalOthers,
-            'total_vouchers'  => $totalVouchers,
-            'net_amount'      => $netAmount,
-            'notes'           => $data['notes'] ?? null,
-        ]);
+            $totalServices = $items->where('type', 'service')->sum(fn($i) => $i->commissionValue());
+            $totalProducts = $items->where('type', 'product')->sum(fn($i) => $i->commissionValue());
+            $totalOthers   = $items->where('type', 'other')->sum(fn($i) => $i->commissionValue());
+            $totalVouchers = $vouchers->sum('amount');
+            $netAmount     = max(0, $totalServices + $totalProducts + $totalOthers - $totalVouchers);
 
-        $items->each(fn($item) => $item->update([
-            'commission_paid_at'    => now(),
-            'commission_payment_id' => $payment->id,
-        ]));
+            $payment = CommissionPayment::create([
+                'tenant_id'       => auth()->user()->tenant_id,
+                'professional_id' => $professional->id,
+                'period_start'    => $periodStart,
+                'period_end'      => $data['date_to'],
+                'total_services'  => $totalServices,
+                'total_products'  => $totalProducts,
+                'total_others'    => $totalOthers,
+                'total_vouchers'  => $totalVouchers,
+                'net_amount'      => $netAmount,
+                'notes'           => $data['notes'] ?? null,
+            ]);
 
-        $vouchers->each(fn($v) => $v->update(['commission_payment_id' => $payment->id]));
+            $items->each(fn($item) => $item->update([
+                'commission_paid_at'    => now(),
+                'commission_payment_id' => $payment->id,
+            ]));
 
-        return back()->with('success', "Pagamento de R$ " . number_format($netAmount, 2, ',', '.') . " registrado para {$professional->name}!");
+            $vouchers->each(fn($v) => $v->update(['commission_payment_id' => $payment->id]));
+
+            return $payment;
+        });
+
+        if (! $payment) {
+            return back()->withErrors(['pay' => 'Nenhuma comissão ou vale pendente para pagar.']);
+        }
+
+        return back()->with('success', "Pagamento de R$ " . number_format($payment->net_amount, 2, ',', '.') . " registrado para {$professional->name}!");
     }
 
     public function cancel(CommissionPayment $payment)
     {
-        // Reverte itens de pedido para pendente
-        OrderItem::where('commission_payment_id', $payment->id)
-            ->update([
-                'commission_paid_at'    => null,
-                'commission_payment_id' => null,
-            ]);
-
-        // Reverte vales para pendente
-        ProfessionalVoucher::where('commission_payment_id', $payment->id)
-            ->update(['commission_payment_id' => null]);
-
         $professional = $payment->professional;
-        $payment->delete();
+
+        DB::transaction(function () use ($payment) {
+            // Reverte itens de pedido para pendente
+            OrderItem::where('commission_payment_id', $payment->id)
+                ->update([
+                    'commission_paid_at'    => null,
+                    'commission_payment_id' => null,
+                ]);
+
+            // Reverte vales para pendente
+            ProfessionalVoucher::where('commission_payment_id', $payment->id)
+                ->update(['commission_payment_id' => null]);
+
+            $payment->delete();
+        });
 
         return back()->with('success', "Pagamento cancelado. Valores de {$professional->name} voltaram para pendente.");
     }

@@ -7,12 +7,19 @@ use App\Models\Category;
 use App\Models\Professional;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 class AuthService
 {
     public function registerWithTenant(array $data): User
+    {
+        // Conta, salão, categorias e profissional nascem juntos ou não nascem (senão o e-mail fica preso a uma conta quebrada)
+        return DB::transaction(fn () => $this->createTenantAccount($data));
+    }
+
+    private function createTenantAccount(array $data): User
     {
         $affiliate = null;
         if (! empty($data['affiliate_code'])) {

@@ -12,10 +12,14 @@ use App\Models\Professional;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
+    public function __construct(private OrderService $orders) {}
+
     public function index(Request $request)
     {
         $date = $request->date
@@ -89,43 +93,45 @@ class AppointmentController extends Controller
         $recurrenceGroupId = Str::uuid();
         $dates = $this->buildRecurrenceDates($data['date'], $data['recurrence'] ?? 'none');
 
-        foreach ($dates as $date) {
-            $appointment = Appointment::create([
-                ...$data,
-                'service_id'          => $primaryServiceId,
-                'date'                => $date,
-                'recurrence_group_id' => $recurrenceGroupId,
-                'create_order'        => $request->boolean('create_order', true),
-            ]);
-
-            // Cria comanda automaticamente se solicitado
-            if ($appointment->create_order) {
-                $services = Service::whereIn('id', $serviceIds)->get();
-                $total = $services->sum('price');
-
-                $order = Order::create([
-                    'client_id'      => $data['client_id'],
-                    'appointment_id' => $appointment->id,
-                    'status'         => 'open',
-                    'total'          => $total,
+        DB::transaction(function () use ($dates, $data, $serviceIds, $primaryServiceId, $recurrenceGroupId, $request) {
+            foreach ($dates as $date) {
+                $appointment = Appointment::create([
+                    ...$data,
+                    'service_id'          => $primaryServiceId,
+                    'date'                => $date,
+                    'recurrence_group_id' => $recurrenceGroupId,
+                    'create_order'        => $request->boolean('create_order', true),
                 ]);
 
-                foreach ($services as $service) {
-                    OrderItem::create([
-                        'order_id'        => $order->id,
-                        'professional_id' => $data['professional_id'],
-                        'type'            => 'service',
-                        'description'     => $service->name,
-                        'qty'             => 1,
-                        'unit_price'      => $service->price,
-                        'commission_pct'  => $service->commission_pct ?? 0,
-                        'has_commission'  => ($service->commission_pct ?? 0) > 0,
-                    ]);
-                }
+                // Cria comanda automaticamente se solicitado
+                if ($appointment->create_order) {
+                    $services = Service::whereIn('id', $serviceIds)->get();
+                    $total = $services->sum('price');
 
-                $appointment->update(['order_id' => $order->id]);
+                    $order = Order::create([
+                        'client_id'      => $data['client_id'],
+                        'appointment_id' => $appointment->id,
+                        'status'         => 'open',
+                        'total'          => $total,
+                    ]);
+
+                    foreach ($services as $service) {
+                        OrderItem::create([
+                            'order_id'        => $order->id,
+                            'professional_id' => $data['professional_id'],
+                            'type'            => 'service',
+                            'description'     => $service->name,
+                            'qty'             => 1,
+                            'unit_price'      => $service->price,
+                            'commission_pct'  => $service->commission_pct ?? 0,
+                            'has_commission'  => ($service->commission_pct ?? 0) > 0,
+                        ]);
+                    }
+
+                    $appointment->update(['order_id' => $order->id]);
+                }
             }
-        }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -152,24 +158,26 @@ class AppointmentController extends Controller
             'notes'           => ['nullable', 'string', 'max:500'],
         ]);
 
-        $oldStatus = $appointment->status;
-        $appointment->update($data);
+        DB::transaction(function () use ($appointment, $data) {
+            $oldStatus = $appointment->status;
+            $appointment->update($data);
 
-        // Sincroniza status da comanda ao mudar status do agendamento
-        if (isset($data['status']) && $data['status'] !== $oldStatus && $appointment->order_id) {
-            $order = $appointment->order;
-            if ($order) {
-                if ($data['status'] === 'cancelled') {
-                    // Cancela a comanda (se não estiver já fechada/paga)
-                    if ($order->status !== 'closed') {
-                        $order->update(['status' => 'cancelled']);
+            // Sincroniza status da comanda ao mudar status do agendamento
+            if (isset($data['status']) && $data['status'] !== $oldStatus && $appointment->order_id) {
+                $order = $appointment->order;
+                if ($order) {
+                    if ($data['status'] === 'cancelled') {
+                        // Cancela a comanda (se não estiver já fechada/paga)
+                        if ($order->status !== 'closed') {
+                            $order->update(['status' => 'cancelled']);
+                        }
+                    } elseif ($order->status === 'cancelled') {
+                        // Restaura a comanda cancelada ao reativar o agendamento
+                        $order->update(['status' => 'open']);
                     }
-                } elseif ($order->status === 'cancelled') {
-                    // Restaura a comanda cancelada ao reativar o agendamento
-                    $order->update(['status' => 'open']);
                 }
             }
-        }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -178,19 +186,21 @@ class AppointmentController extends Controller
     {
         $deleteAll = $request->boolean('delete_recurrence');
 
-        if ($deleteAll && $appointment->recurrence_group_id) {
-            $appointments = Appointment::where('recurrence_group_id', $appointment->recurrence_group_id)
-                ->where('date', '>=', today())
-                ->get();
+        DB::transaction(function () use ($appointment, $deleteAll) {
+            if ($deleteAll && $appointment->recurrence_group_id) {
+                $appointments = Appointment::where('recurrence_group_id', $appointment->recurrence_group_id)
+                    ->where('date', '>=', today())
+                    ->get();
 
-            foreach ($appointments as $apt) {
-                $this->deleteOrderForAppointment($apt);
-                $apt->delete();
+                foreach ($appointments as $apt) {
+                    $this->deleteOrderForAppointment($apt);
+                    $apt->delete();
+                }
+            } else {
+                $this->deleteOrderForAppointment($appointment);
+                $appointment->delete();
             }
-        } else {
-            $this->deleteOrderForAppointment($appointment);
-            $appointment->delete();
-        }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -199,12 +209,11 @@ class AppointmentController extends Controller
     {
         if (! $appointment->order_id) return;
 
-        $order = $appointment->order()->with(['items', 'payments'])->first();
+        $order = $appointment->order;
         if (! $order) return;
 
-        $order->items()->delete();
-        $order->payments()->delete();
-        $order->delete();
+        // devolve estoque e reverte o saldo do cliente, em vez de apenas apagar as linhas
+        $this->orders->delete($order);
     }
 
     // Gera as datas de recorrência (máximo 12 ocorrências)

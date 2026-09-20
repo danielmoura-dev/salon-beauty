@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Professional;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProfessionalController extends Controller
@@ -36,6 +37,8 @@ class ProfessionalController extends Controller
             'receives_commission' => ['boolean'],
             'photo'               => ['nullable', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,avif', 'max:5120'],
             'work_schedule'       => ['nullable', 'string'],
+            'custom_commissions'   => ['nullable', 'array'],
+            'custom_commissions.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $data['show_on_agenda']      = $request->boolean('show_on_agenda', true);
@@ -50,8 +53,10 @@ class ProfessionalController extends Controller
                 ->store('professionals/' . auth()->user()->tenant_id, 'public');
         }
 
-        $professional = Professional::create($data);
-        $this->syncServiceCommissions($request, $professional);
+        DB::transaction(function () use ($data, $request) {
+            $professional = Professional::create($data);
+            $this->syncServiceCommissions($request, $professional);
+        });
 
         return back()->with('success', 'Profissional cadastrado!');
     }
@@ -66,6 +71,8 @@ class ProfessionalController extends Controller
             'receives_commission' => ['boolean'],
             'photo'               => ['nullable', 'mimes:jpeg,jpg,png,gif,webp,heic,heif,avif', 'max:5120'],
             'work_schedule'       => ['nullable', 'string'],
+            'custom_commissions'   => ['nullable', 'array'],
+            'custom_commissions.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $data['show_on_agenda']      = $request->boolean('show_on_agenda');
@@ -81,8 +88,10 @@ class ProfessionalController extends Controller
                 ->store('professionals/' . auth()->user()->tenant_id, 'public');
         }
 
-        $professional->update($data);
-        $this->syncServiceCommissions($request, $professional);
+        DB::transaction(function () use ($data, $request, $professional) {
+            $professional->update($data);
+            $this->syncServiceCommissions($request, $professional);
+        });
 
         return back()->with('success', 'Profissional atualizado!');
     }
@@ -99,10 +108,13 @@ class ProfessionalController extends Controller
         if (! $request->has('custom_commissions')) return;
 
         $custom = $request->input('custom_commissions', []);
+
+        // Só serviços deste salão (a chave do array vem do cliente e não é validada pelo `.*`)
+        $ownServiceIds = Service::whereIn('id', array_keys($custom))->pluck('id')->all();
         $syncData = [];
 
         foreach ($custom as $serviceId => $pct) {
-            if ($pct !== null && $pct !== '') {
+            if (in_array($serviceId, $ownServiceIds, true) && $pct !== null && $pct !== '') {
                 $syncData[$serviceId] = ['commission_pct' => (float) $pct];
             }
         }
